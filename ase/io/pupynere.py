@@ -128,6 +128,8 @@ class netcdf_file(object):
 
     """
     def __init__(self, filename, mode='r', mmap=True):
+        assert __debug__
+
         self.filename = filename
         self.use_mmap = mmap
 
