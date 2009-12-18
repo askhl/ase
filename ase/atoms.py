@@ -97,7 +97,7 @@ class Atoms(object):
     def __init__(self, symbols=None,
                  positions=None, numbers=None,
                  tags=None, momenta=None, masses=None,
-                 magmoms=None, charges=None,
+                 magmoms=None, charges=None,usertags=None,
                  scaled_positions=None,
                  cell=None, pbc=None,
                  constraint=None,
@@ -129,6 +129,8 @@ class Atoms(object):
                 positions = atoms.get_positions()
             if tags is None and atoms.has('tags'):
                 tags = atoms.get_tags()
+            if usertags is None and atoms.has('usertags'):
+                usertags = atoms.get_usertags()
             if momenta is None and atoms.has('momenta'):
                 momenta = atoms.get_momenta()
             if magmoms is None and atoms.has('magmoms'):
@@ -181,6 +183,7 @@ class Atoms(object):
 
         self.set_constraint(constraint)
         self.set_tags(default(tags, 0))
+        self.set_usertags(default(usertags,None))
         self.set_momenta(default(momenta, (0.0, 0.0, 0.0)))
         self.set_masses(default(masses, None))
         self.set_initial_magnetic_moments(default(magmoms, 0.0))
@@ -375,6 +378,10 @@ class Atoms(object):
     def set_tags(self, tags):
         """Set tags for all atoms."""
         self.set_array('tags', tags, int, ())
+
+    def set_usertags(self, usertags):
+        """ Set usertags for all atoms."""
+        self.set_array('usertags', usertags, object, ())
         
     def get_tags(self):
         """Get integer array of tags."""
@@ -382,6 +389,13 @@ class Atoms(object):
             return self.arrays['tags'].copy()
         else:
             return np.zeros(len(self), int)
+
+    def get_usertags(self):
+        """Get array of usertags."""
+        if 'usertags' in self.arrays:
+            return self.arrays['usertags'].copy()
+        else:
+            return np.array([None for x in self], dtype=object)
 
     def set_momenta(self, momenta):
         """Set momenta."""

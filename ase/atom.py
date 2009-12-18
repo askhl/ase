@@ -14,6 +14,7 @@ data = {'symbol':   ('symbols',   str,   ()  ),
         'mass':     ('masses',    float, ()  ),
         'magmom':   ('magmoms',   float, ()  ),
         'charge':   ('charges',   float, ()  ),
+        'usertag':  ('usertags',  object, () )
         }
 
 class Atom(object):
@@ -74,11 +75,11 @@ class Atom(object):
         """
 
     __slots__ = ['_number', '_symbol', '_position', '_tag', '_momentum',
-                 '_mass', '_magmom', '_charge', 'atoms', 'index']
+                 '_mass', '_magmom', '_charge', 'atoms', 'index','_usertag']
 
     def __init__(self, symbol='X', position=(0, 0, 0),
                  tag=None, momentum=None, mass=None,
-                 magmom=None, charge=None,
+                 magmom=None, charge=None,usertag=None,
                  atoms=None, index=None):
         if atoms is None:
             # This atom is not part of any Atoms object:
@@ -96,6 +97,7 @@ class Atom(object):
             self._mass = mass
             self._magmom = magmom
             self._charge = charge
+            self._usertag = usertag
 
         self.index = index
         self.atoms = atoms
@@ -118,7 +120,7 @@ class Atom(object):
         """Helper method."""
         return (self.position, self.number,
                 self.tag, self.momentum, self.mass,
-                self.magmom, self.charge)
+                self.magmom, self.charge, self.usertag)
 
     def cut_reference_to_atoms(self):
         """Cut reference to atoms object."""
@@ -131,7 +133,8 @@ class Atom(object):
          self._momentum,
          self._mass,
          self._magmom,
-         self._charge) = data
+         self._charge,
+         self._usertag) = data
         self._symbol = chemical_symbols[self._number]
         
     def _get(self, name):
@@ -181,6 +184,7 @@ class Atom(object):
     def get_position(self): return self._get_copy('position')
     def _get_position(self): return self._get('position')
     def get_tag(self): return self._get('tag')
+    def get_usertag(self): return self._get('usertag')
     def get_momentum(self): return self._get_copy('momentum')
     def _get_momentum(self): return self._get('momentum')
     def get_mass(self): return self._get('mass')
@@ -192,6 +196,7 @@ class Atom(object):
     def set_position(self, position):
         self._set('position', np.array(position, float))
     def set_tag(self, tag): self._set('tag', tag)
+    def set_usertag(self, usertag): self._set('usertag', usertag)
     def set_momentum(self, momentum): self._set('momentum', momentum)
     def set_mass(self, mass): self._set('mass', mass)
     def set_initial_magnetic_moment(self, magmom): self._set('magmom', magmom)
@@ -229,7 +234,7 @@ class Atom(object):
     magmom = property(get_initial_magnetic_moment, set_initial_magnetic_moment,
                       doc='Initial magnetic moment')
     charge = property(get_charge, set_charge, doc='Atomic charge')
-
+    usertag = property(get_usertag, set_usertag, doc='User object tag')
     def get_x(self): return self.position[0]
     def get_y(self): return self.position[1]
     def get_z(self): return self.position[2]
@@ -238,7 +243,7 @@ class Atom(object):
     def set_y(self, y): self.position[1] = y
     def set_z(self, z): self.position[2] = z
 
-    x = property(get_x, set_x, doc='X-coordiante')
-    y = property(get_y, set_y, doc='Y-coordiante')
-    z = property(get_z, set_z, doc='Z-coordiante')
+    x = property(get_x, set_x, doc='X-coordinate')
+    y = property(get_y, set_y, doc='Y-coordinate')
+    z = property(get_z, set_z, doc='Z-coordinate')
 
