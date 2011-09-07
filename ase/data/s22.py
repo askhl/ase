@@ -4,7 +4,7 @@ The following contains the S22 and s26 databases of weakly interacting dimers an
 S22 geometry data are from
 P. Jurecka, J. Sponer, J. Cerny, P. Hobza; Phys Chem Chem Phys 2006, 8 (17), 1985-1993.
 See http://www.begdb.com/index.php?action=106a6c241b8797f52e1e77317b96a201 for the original files.
-All geometries are optimized at either the CCSD(T) or MP2 level except for the methyl amide dimers 
+All geometries are optimized at either the CCSD(T) or MP2 level except for the methyl amide dimers
 where only the hydrogen position is optimized at the DFT level (the precise optimization is written as a comment).
 
 The S22 interaction energies are all calculated using both CCSD(T)/CBS counter poised corrected (CP) and MP2 /CBS CP.
@@ -38,7 +38,7 @@ s22 = ['Ammonia_dimer','Water_dimer','Formic_acid_dimer','Formamide_dimer',
 'Indole-benzene_T-shape_complex','Phenol_dimer']
 
 s26 = s22 + ['Methanol_dimer','Methanol-formaldehyde_complex',
-'Methyl_amide_dimer_alpha','Methyl_amide_dimer_beta'] 
+'Methyl_amide_dimer_alpha','Methyl_amide_dimer_beta']
 
 s22x5 = ['Ammonia_dimer_0.9','Ammonia_dimer_1.0','Ammonia_dimer_1.2','Ammonia_dimer_1.5','Ammonia_dimer_2.0',
 'Water_dimer_0.9','Water_dimer_1.0','Water_dimer_1.2','Water_dimer_1.5','Water_dimer_2.0',
@@ -80,8 +80,9 @@ data = {
     'offset': 0.0130,
     'symbols': 'ONCCCCCHHHHHNCCCCCHHHHNHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [12,13],
-    # Optimisation level:  MP2/cc-pVTZ 
+    # Optimisation level:  MP2/cc-pVTZ
     'positions':[[ -1.3976213, -1.8858368, -0.3673061],
                  [ -1.4642550,  0.3641828,  0.0192301],
                  [ -4.1857398,  0.3696669,  0.0360960],
@@ -242,6 +243,7 @@ data = {
     'offset': -0.0243,
     'symbols': 'NCHNCCNHHNCHNCHNCHCCHHHCONHCOH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [15,15],
     # Optimisation level:  MP2/cc-pVTZ
     'positions':[[  0.2793014,  2.4068393, -0.6057517],
@@ -434,8 +436,9 @@ data = {
     'offset': 0.0160,
     'symbols': 'NCCCNCNCNNHHHHHNCCCNCCOOHHHHHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [15,15],
-    # Optimisation level: MP2/cc-pVTZ 
+    # Optimisation level: MP2/cc-pVTZ
     'positions':[[  0.9350155, -0.0279801, -0.3788916],
                  [  1.6739638, -0.0357766,  0.7424316],
                  [  3.0747955, -0.0094480,  0.5994562],
@@ -626,8 +629,9 @@ data = {
     'offset': 0.0013,
     'symbols': 'NHHHNHHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [4,4],
-    # Optimisation level: CCSD(T)/cc-pVQZ 
+    # Optimisation level: CCSD(T)/cc-pVQZ
     'positions':[[ -1.578718, -0.046611,  0.000000],
                  [ -2.158621,  0.136396, -0.809565],
                  [ -2.158621,  0.136396,  0.809565],
@@ -686,25 +690,26 @@ data = {
     'offset': -0.0021,
     'symbols': 'CCCCCCHHHHHHCHHHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [12,5],
     # Optimisation level:  MP2/cc-pVTZ
     'positions':[[  1.3932178,  0.0362913, -0.6332803],
-       		 [  0.7280364, -1.1884015, -0.6333017],
-        	 [ -0.6651797, -1.2247077, -0.6332803],
-        	 [ -1.3932041, -0.0362972, -0.6333017],
-        	 [ -0.7280381,  1.1884163, -0.6332803],
-         	 [  0.6651677,  1.2246987, -0.6333017],
-         	 [  2.4742737,  0.0644484, -0.6317240],
-         	 [  1.2929588, -2.1105409, -0.6317401],
-        	 [ -1.1813229, -2.1750081, -0.6317240],
-        	 [ -2.4742614, -0.0644647, -0.6317401],
-        	 [ -1.2929508,  2.1105596, -0.6317240],
-         	 [  1.1813026,  2.1750056, -0.6317401],
-         	 [  0.0000000,  0.0000000,  3.0826195],
-         	 [  0.5868776,  0.8381742,  3.4463772],
-        	 [ -1.0193189,  0.0891638,  3.4463772],
-        	 [  0.0000000,  0.0000000,  1.9966697],
-         	 [  0.4324413, -0.9273380,  3.446377]],
+		 [  0.7280364, -1.1884015, -0.6333017],
+	 [ -0.6651797, -1.2247077, -0.6332803],
+	 [ -1.3932041, -0.0362972, -0.6333017],
+	 [ -0.7280381,  1.1884163, -0.6332803],
+	 [  0.6651677,  1.2246987, -0.6333017],
+	 [  2.4742737,  0.0644484, -0.6317240],
+	 [  1.2929588, -2.1105409, -0.6317401],
+	 [ -1.1813229, -2.1750081, -0.6317240],
+	 [ -2.4742614, -0.0644647, -0.6317401],
+	 [ -1.2929508,  2.1105596, -0.6317240],
+	 [  1.1813026,  2.1750056, -0.6317401],
+	 [  0.0000000,  0.0000000,  3.0826195],
+	 [  0.5868776,  0.8381742,  3.4463772],
+	 [ -1.0193189,  0.0891638,  3.4463772],
+	 [  0.0000000,  0.0000000,  1.9966697],
+	 [  0.4324413, -0.9273380,  3.446377]],
     'positions 0.9':[[  0.000011002 ,  0.036291078 ,  -1.393218002 ],
                      [  -0.000011075 ,  -1.188401879 ,  -0.728035925 ],
                      [  0.000010922 ,  -1.224707791 ,  0.665180078 ],
@@ -800,24 +805,25 @@ data = {
     'offset': -0.0013,
     'symbols': 'CCCCCCHHHHHHNHHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [12,4],
     # Optimisation level:   MP2/cc-pVTZ
     'positions':[[ -0.7392810,  0.5158785, -1.2071079],
-    		 [ -1.4261442,  0.3965455,  0.0000000],
-    		 [ -0.7392810,  0.5158785,  1.2071079],
-     		 [  0.6342269,  0.7546398,  1.2070735],
-     		 [  1.3210434,  0.8737566,  0.0000000],
-     		 [  0.6342269,  0.7546398, -1.2070735],
-    		 [ -1.2719495,  0.4206316, -2.1432894],
-    		 [ -2.4902205,  0.2052381,  0.0000000],
-    		 [ -1.2719495,  0.4206316,  2.1432894],
-     		 [  1.1668005,  0.8474885,  2.1436950],
-    		 [  2.3863585,  1.0596312,  0.0000000],
-     		 [  1.1668005,  0.8474885, -2.1436950],
-     		 [  0.1803930, -2.9491231,  0.0000000],
-     		 [  0.7595495, -3.1459477, -0.8060729],
-     		 [  0.7595495, -3.1459477,  0.8060729],
-     		 [  0.0444167, -1.9449399,  0.0000000]],
+		 [ -1.4261442,  0.3965455,  0.0000000],
+		 [ -0.7392810,  0.5158785,  1.2071079],
+		 [  0.6342269,  0.7546398,  1.2070735],
+		 [  1.3210434,  0.8737566,  0.0000000],
+		 [  0.6342269,  0.7546398, -1.2070735],
+		 [ -1.2719495,  0.4206316, -2.1432894],
+		 [ -2.4902205,  0.2052381,  0.0000000],
+		 [ -1.2719495,  0.4206316,  2.1432894],
+		 [  1.1668005,  0.8474885,  2.1436950],
+		 [  2.3863585,  1.0596312,  0.0000000],
+		 [  1.1668005,  0.8474885, -2.1436950],
+		 [  0.1803930, -2.9491231,  0.0000000],
+		 [  0.7595495, -3.1459477, -0.8060729],
+		 [  0.7595495, -3.1459477,  0.8060729],
+		 [  0.0444167, -1.9449399,  0.0000000]],
     'positions 0.9':[[  0.000000000 ,  0.000000000 ,  -1.207108000 ],
                      [  -0.094723910 ,  -0.690687169 ,  0.000000000 ],
                      [  0.000000000 ,  0.000000000 ,  1.207108000 ],
@@ -898,7 +904,7 @@ data = {
                      [  6.526581329 ,  0.316960994 ,  -0.806073000 ],
                      [  6.526581329 ,  0.316960994 ,  0.806073000 ],
                      [  5.165196108 ,  0.000000000 ,  0.000000000 ]]},
-     		 
+
 'Benzene_dimer_parallel_displaced': {
     'description': "Complex, S22, S26, stack, dispersion bonded",
     'name': "Benzene_dimer_parallel_displaced",
@@ -908,6 +914,7 @@ data = {
     'offset': -0.0083,
     'symbols': 'CCCCCCHHHHHHCCCCCCHHHHHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [12,12],
     # Optimisation level:   MP2/cc-pVTZ
     'positions':[[ -1.0478252, -1.4216736,  0.0000000],
@@ -1054,7 +1061,7 @@ data = {
                      [  8.647340194 ,  -2.209685917 ,  0.000000000 ],
                      [  8.089834889 ,  -1.104085746 ,  -2.143798000 ],
                      [  6.966515495 ,  1.102778154 ,  -2.142315000 ]]},
-    		 
+
 'Benzene_dimer_T-shaped': {
     'description': "Complex, S22, S26",
     'name': "Benzene_dimer_T-shaped",
@@ -1064,6 +1071,7 @@ data = {
     'offset': -0.0039,
     'symbols': 'CCCCCCHHHHHHCCCCCCHHHHHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [12,12],
     # Optimisation level:   MP2/cc-pVTZ
     'positions':[[  0.0000000,  0.0000000,  1.0590353],
@@ -1220,6 +1228,7 @@ data = {
     'offset': 0.0013,
     'symbols': 'CCCCCCHHHHHHNCH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [12,3],
     # Optimisation level:   MP2/cc-pVTZ
     'positions':[[ -0.7097741, -0.9904230,  1.2077018],
@@ -1322,6 +1331,7 @@ data = {
     'offset': 0.0009,
     'symbols': 'CCCCCCHHHHHHOHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [12,3],
     # Optimisation level:   MP2/cc-pVTZ
     'positions':[[  0.7806117, -0.6098875, -1.2075426],
@@ -1424,6 +1434,7 @@ data = {
     'offset': 0.0008,
     'symbols': 'CCHHHHCCHHHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [6,6],
     # Optimisation level: CCSD(T)/cc-pVQZ
     'positions':[[ -0.471925, -0.471925, -1.859111],
@@ -1508,6 +1519,7 @@ data = {
     'offset': 0.0009,
     'symbols': 'CCHHHHCCHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [6,4],
     # Optimisation level: CCSD(T)/cc-pVQZ
     'positions':[[  0.000000, -0.667578, -2.124659],
@@ -1580,6 +1592,7 @@ data = {
     'offset': 0.0073,
     'symbols': 'CONHHHCONHHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [6,6],
     # Optimisation level: MP2/cc-pVTZ
     'positions':[[ -2.018649,  0.052883,  0.000000],
@@ -1664,6 +1677,7 @@ data = {
     'offset': 0.0091,
     'symbols': 'COOHHCOOHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [5,5],
     # Optimisation level:  CCSD(T)/cc-pVTZ
     'positions':[[ -1.888896, -0.179692,  0.000000],
@@ -1736,6 +1750,7 @@ data = {
     'offset': -0.0256,
     'symbols': 'CCCCCCHHHHHHHCCHCCHCNCCHCHHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [12,16],
     # Optimisation level:  MP2/cc-pVTZ
     'positions':[[ -0.0210742,  1.5318615, -1.3639345],
@@ -1916,6 +1931,7 @@ data = {
     'offset': -0.0052,
     'symbols': 'CCCCCCHHHHHHHNCCCCCCCCHHHHHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [12,16],
     # Optimisation level:  MP2/cc-pVTZ
     'positions':[[  2.5118997,  1.6250148,  0.0000000],
@@ -2096,6 +2112,7 @@ data = {
     'offset': 0.0000,
     'symbols': 'CHHHHCHHHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [5,5],
     # Optimisation level:  CCSD(T)/cc-pVTZ
     'positions':[[  0.000000, -0.000140,  1.859161],
@@ -2168,6 +2185,7 @@ data = {
     'offset': 0.0018,
     'symbols': 'COHCCCCCHHHHHOCHCCCCCHHHHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [13,13],
     # Optimisation level: MP2/cc-pVTZ
     'positions':[[ -2.0071056,  0.7638459, -0.1083509],
@@ -2336,6 +2354,7 @@ data = {
     'offset': -0.0135,
     'symbols': 'CCNCCNHHHHCCNCCNHHHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [10,10],
     # Optimisation level: MP2/cc-pVTZ
     'positions':[[ -1.2471894, -1.1718212, -0.6961388],
@@ -2468,6 +2487,7 @@ data = {
     'offset': 0.0100,
     'symbols': 'OCNCCCNOHHHHOCNCCCNOHHHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [12,12],
     # Optimisation level: MP2/cc-pVTZ
     'positions':[[ -1.4663316,  1.0121693,  0.0000000],
@@ -2624,6 +2644,7 @@ data = {
     'offset': -0.0056,
     'symbols': 'NCHCHCONHCOHNCHCHCONHCOH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [12,12],
     # Optimisation level: MP2/cc-pVTZ
     'positions':[[  2.0113587, -1.2132073, -0.0980673],
@@ -2780,6 +2801,7 @@ data = {
     'offset': 0.0022,
     'symbols': 'OHHOHH',
     'magmoms': None,
+    'charges': None,
     'dimer atoms': [3,3],
     # Optimisation level: CCSD(T)/cc-pVQZ
     'positions':[[ -1.551007, -0.114520,  0.000000],
@@ -2828,19 +2850,20 @@ data = {
     'interaction energy CC':-0.2472,
     'symbols': 'COHHHHCOHHHH',
     'magmoms': None,
+    'charges': None,
     # Optimisation level: MP2/cc-pVTZ
     'positions':[[ -2.114335, -0.445120,  0.221169],
-     		 [ -1.298032,  0.687432, -0.091609],
-     		 [ -1.514720, -1.087407,  0.858397],
-     		 [ -2.389026, -0.999598, -0.675819],
-     		 [ -3.014036, -0.146131,  0.758353],
-     		 [ -1.779011,  1.249219, -0.706289],
-     		 [  2.245711,  0.159561,  0.329180],
-     		 [  1.285289, -0.472004, -0.501635],
-     		 [  3.156806, -0.431037,  0.275178],
-     		 [  1.921474,  0.200114,  1.371809],
-     		 [  2.472512,  1.174527, -0.005695],
-     		 [  0.459691,  0.030236, -0.432082]]},
+		 [ -1.298032,  0.687432, -0.091609],
+		 [ -1.514720, -1.087407,  0.858397],
+		 [ -2.389026, -0.999598, -0.675819],
+		 [ -3.014036, -0.146131,  0.758353],
+		 [ -1.779011,  1.249219, -0.706289],
+		 [  2.245711,  0.159561,  0.329180],
+		 [  1.285289, -0.472004, -0.501635],
+		 [  3.156806, -0.431037,  0.275178],
+		 [  1.921474,  0.200114,  1.371809],
+		 [  2.472512,  1.174527, -0.005695],
+		 [  0.459691,  0.030236, -0.432082]]},
 'Methanol-formaldehyde_complex': {
     'description': "1 h-bond, OH-O, S26",
     's26_number': "24",
@@ -2849,17 +2872,18 @@ data = {
     'interaction energy CC':-0.2303,
     'symbols': 'COHHHHCOHH',
     'magmoms': None,
+    'charges': None,
     # Optimisation level: MP2/cc-pVTZ
     'positions':[[  1.4073776162,  1.0401758064,  2.0396751091],
-      		 [  0.9349167370,  0.2900025037,  0.9338944612],
-      		 [  2.1022348002,  0.4092302046,  2.5857336738],
-      		 [  0.6031517696,  1.3305232490,  2.7201012084],
-      		 [  1.9382206717,  1.9424443037,  1.7274684180],
-      		 [  0.2386426835,  0.8096239461,  0.5150020113],
-      		 [ -2.0809868810, -0.1309834084,  0.2601720974],
-      		 [ -1.6206107677,  0.9480216819, -0.1003790153],
-      		 [ -3.1316901290, -0.3840062180,  0.0820343467],
-      		 [ -1.4275985002, -0.8637260692,  0.7543476894]]},
+		 [  0.9349167370,  0.2900025037,  0.9338944612],
+		 [  2.1022348002,  0.4092302046,  2.5857336738],
+		 [  0.6031517696,  1.3305232490,  2.7201012084],
+		 [  1.9382206717,  1.9424443037,  1.7274684180],
+		 [  0.2386426835,  0.8096239461,  0.5150020113],
+		 [ -2.0809868810, -0.1309834084,  0.2601720974],
+		 [ -1.6206107677,  0.9480216819, -0.1003790153],
+		 [ -3.1316901290, -0.3840062180,  0.0820343467],
+		 [ -1.4275985002, -0.8637260692,  0.7543476894]]},
 'Methyl_amide_dimer_alpha': {
     'description': "1 h-bond, NH-O, S26",
     's26_number': "25",
@@ -2868,25 +2892,26 @@ data = {
     'interaction energy CC':-0.2901,
     'symbols': 'CCOHHHNHHCCOHHHNHH',
     'magmoms': None,
+    'charges': None,
     # Optimisation level: DFT TPSS/TZVP (hydrogen positions optimized)
     'positions':[[  5.575000,  7.306000, -12.014000],
-  		 [  4.318000,  8.065000, -12.345000],
-  		 [  4.212000,  9.236000, -11.986000],
-  		 [  6.072000,  7.809000, -11.186000],
-  		 [  6.246000,  7.323000, -12.882000],
-  		 [  5.392000,  6.256000, -11.755000],
-  		 [  3.378000,  7.446000, -13.058000],
-  		 [  3.468000,  6.488000, -13.367000],
-  		 [  2.561000,  7.968000, -13.350000],
-  		 [  0.768000,  8.395000, -9.9890000],
-  		 [  1.666000,  9.133000, -8.9870000],
-  		 [  1.355000,  9.267000, -7.8060000],
-  		 [ -0.014000,  9.085000, -10.326000],
-  		 [  0.289000,  7.561000, -9.4730000],
-  		 [  1.315000,  8.032000, -10.865000],
-  		 [  2.798000,  9.666000, -9.4430000],
-  		 [  3.139000,  9.599000, -10.401000],
-  		 [  3.350000,  10.195000, -8.779000]]},
+		 [  4.318000,  8.065000, -12.345000],
+		 [  4.212000,  9.236000, -11.986000],
+		 [  6.072000,  7.809000, -11.186000],
+		 [  6.246000,  7.323000, -12.882000],
+		 [  5.392000,  6.256000, -11.755000],
+		 [  3.378000,  7.446000, -13.058000],
+		 [  3.468000,  6.488000, -13.367000],
+		 [  2.561000,  7.968000, -13.350000],
+		 [  0.768000,  8.395000, -9.9890000],
+		 [  1.666000,  9.133000, -8.9870000],
+		 [  1.355000,  9.267000, -7.8060000],
+		 [ -0.014000,  9.085000, -10.326000],
+		 [  0.289000,  7.561000, -9.4730000],
+		 [  1.315000,  8.032000, -10.865000],
+		 [  2.798000,  9.666000, -9.4430000],
+		 [  3.139000,  9.599000, -10.401000],
+		 [  3.350000,  10.195000, -8.779000]]},
 'Methyl_amide_dimer_beta': {
     'description': "1 h-bond, NH-O, S26",
     'name': "Methyl_amide_dimer_beta",
@@ -2895,25 +2920,26 @@ data = {
     'interaction energy CC':-0.3317,
     'symbols': 'CCOHHHNHHCCOHHHNHH',
     'magmoms': None,
+    'charges': None,
     # Optimisation level: DFT TPSS/TZVP (hydrogen positions optimized)
     'positions':[[  0.300000, -7.945000, -4.8440000],
-  		 [ -1.133000, -7.581000, -4.4840000],
-  		 [ -1.612000, -7.787000, -3.3770000],
-  		 [  0.650000, -7.434000, -5.7440000],
- 		 [  0.351000, -9.028000, -5.0100000],
-  		 [  0.952000, -7.712000, -3.9990000],
-  		 [ -1.811000, -7.075000, -5.4730000],
-  		 [ -2.781000, -6.832000, -5.3080000],
- 		 [ -1.403000, -6.863000, -6.3820000],
-  		 [ -0.931000, -6.425000, -10.105000],
-  		 [  0.041000, -6.447000, -8.9820000],
-  		 [ -0.356000, -6.488000, -7.8210000],
-  		 [ -0.492000, -6.635000, -11.086000],
-  		 [ -1.398000, -5.434000, -10.143000],
-  		 [ -1.724000, -7.150000, -9.9060000],
-  		 [  1.318000, -6.364000, -9.3020000],
-  		 [  1.636000, -6.336000, -10.260000],
-  		 [  2.015000, -6.339000, -8.5670000]]},
+		 [ -1.133000, -7.581000, -4.4840000],
+		 [ -1.612000, -7.787000, -3.3770000],
+		 [  0.650000, -7.434000, -5.7440000],
+		 [  0.351000, -9.028000, -5.0100000],
+		 [  0.952000, -7.712000, -3.9990000],
+		 [ -1.811000, -7.075000, -5.4730000],
+		 [ -2.781000, -6.832000, -5.3080000],
+		 [ -1.403000, -6.863000, -6.3820000],
+		 [ -0.931000, -6.425000, -10.105000],
+		 [  0.041000, -6.447000, -8.9820000],
+		 [ -0.356000, -6.488000, -7.8210000],
+		 [ -0.492000, -6.635000, -11.086000],
+		 [ -1.398000, -5.434000, -10.143000],
+		 [ -1.724000, -7.150000, -9.9060000],
+		 [  1.318000, -6.364000, -9.3020000],
+		 [  1.636000, -6.336000, -10.260000],
+		 [  2.015000, -6.339000, -8.5670000]]},
 }
 
 
@@ -2944,7 +2970,7 @@ def identify_s22_sys(name,dist=None):
     elif name in s22 and dist != None:
         dist_ = str(dist)
         if dist_ not in ['0.9','1.0','1.2','1.5','2.0']:
-            raise KeyError('Bad s22x5 distance specified: %s' % dist_) 
+            raise KeyError('Bad s22x5 distance specified: %s' % dist_)
         else:
             s22_name = name
             dist = dist_
@@ -3011,7 +3037,7 @@ def get_name(name,dist=None):
     """
     s22_,s22x5_,s22_name,dist_ = identify_s22_sys(name,dist)
     if s22x5_ is True:
-        raise KeyError('System may not be in s22x5')    
+        raise KeyError('System may not be in s22x5')
     return data[name]['name']
 
 
@@ -3028,7 +3054,7 @@ def get_s22x5_distance(name, dist=None):
     """
     s22_,s22x5_,s22_name,dist_ = identify_s22_sys(name,dist)
     if s22_ is True:
-        raise KeyError('System must be in s22x5')    
+        raise KeyError('System must be in s22x5')
     else:
         x00 = data[s22_name]['positions 1.0'][0][0]
         x01 = data[s22_name]['positions 1.0'][-1][0]

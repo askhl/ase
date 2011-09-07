@@ -1,4 +1,5 @@
-from ase.data.molecules import molecule
+from ase.utils.compound_test import MoleculeTest
+molecule = MoleculeTest().compound
 from ase.constraints import FixAtoms
 
 N = 2

@@ -8,12 +8,12 @@ environment variables.
 """
 
 from ase.test import NotAvailable
-import os
 
-vcmd = os.getenv('VASP_COMMAND')
-vscr = os.getenv('VASP_SCRIPT')
-if vcmd == None and vscr == None:
-    raise NotAvailable('Neither VASP_COMMAND nor VASP_SCRIPT defined')
+try:
+    from ase.test.vasp_installed import vasp_installed
+    vasp_installed()
+except NotAvailable:
+    raise NotAvailable('Vasp required')
 
 import numpy as np
 from ase import io

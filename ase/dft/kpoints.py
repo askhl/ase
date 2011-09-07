@@ -18,12 +18,12 @@ def get_monkhorst_pack_size_and_offset(kpts):
     Returns (size, offset), where::
 
         kpts = monkhorst_pack(size) + offset.
-    
+
     The set of k-points must not have been symmetry reduced."""
 
     if len(kpts) == 1:
         return np.ones(3, int), np.array(kpts[0], dtype=float)
-    
+
     size = np.zeros(3, int)
     for c in range(3):
         # Determine increment between k-points along current axis
@@ -102,6 +102,26 @@ def get_bandpath(points, cell, npoints=50):
     x.append(x0)
     return kpts, np.array(x), np.array(X)
 
+
+def get_kpoints_guess(atoms, kpts, mode='even'):
+    """Return a guess of the number of k-points (even or odd) based on the cell.
+    kpts[i] < 0 yields ~ abs(kpts[i])/atoms.get_cell().diagonal()[i]).
+    """
+    assert mode in ['odd', 'even']
+    guess_kpts = []
+    # http://cms.mpi.univie.ac.at/vasp/vasp/Number_k_points_method_smearing.html
+    for n, k in enumerate(kpts):
+        if k <= 0:
+            used_cell = atoms.get_cell().diagonal()
+            assert used_cell[n] > 0.0
+            kbyc = abs(k)/used_cell[n]
+            if mode == 'even':
+                guess_kpts.append(max(1, int(kbyc) + (int(kbyc) % 2)))
+            else:
+                guess_kpts.append(max(1, int(kbyc) + (int(kbyc) % 2) - 1))
+        else:
+            guess_kpts.append(k)
+    return guess_kpts
 
 # The following is a list of the critical points in the 1. Brillouin zone
 # for some typical crystal structures.

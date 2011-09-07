@@ -1,19 +1,16 @@
 #!/usr/bin/python
 
 """
-Run some VASP tests to ensure that the VASP calculator works. This
-is conditional on the existence of the VASP_COMMAND or VASP_SCRIPT
-environment variables
-
+Run some VASP tests to ensure that the VASP calculator works.
 """
 
 from ase.test import NotAvailable
-import os
 
-vcmd = os.getenv('VASP_COMMAND')
-vscr = os.getenv('VASP_SCRIPT')
-if vcmd == None and vscr == None:
-    raise NotAvailable('Neither VASP_COMMAND nor VASP_SCRIPT defined')
+try:
+    from ase.test.vasp_installed import vasp_installed
+    vasp_installed()
+except NotAvailable:
+    raise NotAvailable('Vasp required')
 
 from ase import Atoms
 from ase.calculators.vasp import Vasp
