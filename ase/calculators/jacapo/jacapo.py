@@ -3971,7 +3971,7 @@ s.recv(14)
         nc.close()
         return kw
 
-    def get_magnetic_moment(self):
+    def get_magnetic_moment(self, atoms=None):
         'calculates the magnetic moment (Bohr-magnetons) of the supercell'
 
         if not self.get_spin_polarized():
