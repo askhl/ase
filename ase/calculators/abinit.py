@@ -228,6 +228,31 @@ class Abinit:
     def get_spin_polarized(self):
         return self.spinpol
 
+    def get_number_of_spins(self):
+        return 1 + int(self.spinpol)
+
+    def get_magnetic_moment(self, atoms):
+        self.update(atoms)
+        return self.magnetic_moment
+
+    def read_magnetic_moment(self):
+        magmom = None
+        if not self.get_spin_polarized():
+            magmom = 0.0
+        else: # only for spinpolarized system Magnetisation is printed
+            for line in open(self.label + '.txt'):
+                if line.find('Magnetisation') != -1: # last one
+                    magmom = float(line.split('=')[-1].strip())
+        return magmom
+
+    def get_magnetic_moments(self, atoms):
+        # local magnetic moments are not available in abinit
+        # so set the total magnetic moment on the atom no. 0 and fill with 0.0
+        self.update(atoms)
+        magmoms = [0.0 for a in range(len(atoms))]
+        magmoms[0] = self.get_magnetic_moment(atoms)
+        return np.array(magmoms)
+
     def get_fermi_level(self):
         return self.read_fermi()
 
@@ -440,7 +465,8 @@ class Abinit:
 
     def read_kpts_info(self, kpt=0, spin=0, mode='eigenvalues'):
         """ Returns list of last eigenvalues, occupations, kpts weights, or
-        kpts coordinates for given kpt and spin"""
+        kpts coordinates for given kpt and spin.
+        Due to the way of reading output the spins are exchanged in spin-polarized case.  """
         # output may look like this (or without occupation entries); 8 entries per line:
         #
         #  Eigenvalues (hartree) for nkpt=  20  k points:
@@ -452,6 +478,12 @@ class Abinit:
         # ...
         #
         assert mode in ['eigenvalues' , 'occupations', 'ibz_k_points', 'k_point_weights'], 'mode not in [\'eigenvalues\' , \'occupations\', \'ibz_k_points\', \'k_point_weights\']'
+        if self.get_spin_polarized():
+            spin = {0: 1, 1: 0}[spin]
+        if spin == 0:
+           spinname = ''
+        else:
+           spinname = 'SPIN UP'.lower()
         # number of lines of eigenvalues/occupations for a kpt
         nband = self.get_number_of_bands()
         n_entry_lines = max(1, int(nband/self.n_entries_float))
@@ -464,13 +496,21 @@ class Abinit:
         # find the begining line of last eigenvalues
         contains_eigenvalues = 0
         for n, line in enumerate(lines):
-            if line.rfind('eigenvalues (hartree) for nkpt') > -1:
-            #if line.rfind('eigenvalues (   ev  ) for nkpt') > -1: #MDTMP
-                contains_eigenvalues = n
+            if spin == 0:
+                if line.rfind('eigenvalues (hartree) for nkpt') > -1:
+                #if line.rfind('eigenvalues (   ev  ) for nkpt') > -1: #MDTMP
+                    contains_eigenvalues = n
+            else:
+                if (line.rfind('eigenvalues (hartree) for nkpt') > -1 and
+                    line.rfind(spinname) > -1): # find the last 'SPIN UP'
+                        contains_eigenvalues = n
         # find the end line of eigenvalues starting from contains_eigenvalues
-        for line in lines[contains_eigenvalues:]:
+        text_list = [lines[contains_eigenvalues]]
+        for line in lines[contains_eigenvalues + 1:]:
             text_list.append(line)
-            if not line.strip(): # find a blank line
+            # find a blank line or eigenvalues of second spin
+            if (not line.strip() or
+                line.rfind('eigenvalues (hartree) for nkpt') > -1):
                 break
         # remove last (blank) line
         text_list = text_list[:-1]
@@ -605,6 +645,7 @@ class Abinit:
         self.nband = self.read_number_of_bands()
         self.niter = self.read_number_of_iterations()
         self.nelect = self.read_number_of_electrons()
+        self.magnetic_moment = self.read_magnetic_moment()
 
 def inpify(key):
     return key.lower().replace('_', '').replace('.', '').replace('-', '')
@@ -645,3 +686,6 @@ keys_with_units = {
 #    'rcspatial': 'Ang',
 #    'kgridcutoff': 'Ang',
 #    'latticeconstant': 'Ang'}
+
+# shortcut function names
+Abinit.get_occupation_numbers = Abinit.get_occupations
