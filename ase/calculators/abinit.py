@@ -88,7 +88,7 @@ class Abinit:
         self.mix = mix
         self.pps = pps
         self.toldfe = toldfe
-        if not pps in ['fhi', 'hgh', 'hgh.sc', 'hghk', 'paw']:
+        if not pps in ['fhi', 'hgh', 'hgh.sc', 'hgh.k', 'tm', 'paw']:
             raise ValueError('Unexpected PP identifier %s' % pps)
 
         self.converged = False
@@ -135,13 +135,16 @@ class Abinit:
             pps = self.pps
             if pps == 'fhi':
                 name = '%02d-%s.%s.fhi' % (number, symbol, xcname)
-            elif pps in ('paw'):
+            elif pps in ['paw']:
                 hghtemplate = '%s-%s-%s.paw' # E.g. "H-GGA-hard-uspp.paw"
                 name = hghtemplate % (symbol, xcname, '*')
-            elif pps in ('hghk'):
-                hghtemplate = '%s-q%s.k.hgh' # E.g. "Co-q17.k.hgh"
+            elif pps in ['hgh.k']:
+                hghtemplate = '%s-q%s.hgh.k' # E.g. "Co-q17.hgh.k"
                 name = hghtemplate % (symbol, '*')
-            elif pps in ('hgh', 'hgh.sc'):
+            elif pps in ['tm']:
+                hghtemplate = '%d%s%s.pspnc' # E.g. "44ru.pspnc"
+                name = hghtemplate % (number, symbol.lower(), '*')
+            elif pps in ['hgh', 'hgh.sc']:
                 hghtemplate = '%d%s.%s.hgh' # E.g. "42mo.6.hgh"
                 # There might be multiple files with different valence
                 # electron counts, so we must choose between
@@ -153,7 +156,9 @@ class Abinit:
 
             found = False
             for path in pppaths:
-                if pps.startswith('paw') or pps.startswith('hgh'):
+                if (pps.startswith('paw') or
+                    pps.startswith('hgh') or
+                    pps.startswith('tm')):
                     filenames = glob(join(path, name))
                     if not filenames:
                         continue
@@ -170,11 +175,15 @@ class Abinit:
                         Z = selector([int(os.path.split(name)[1].split('.')[1])
                                       for name in filenames])
                         name = hghtemplate % (number, symbol.lower(), str(Z))
-                    elif pps == 'hghk':
+                    elif pps == 'hgh.k':
                         selector = min # Semicore - highest electron count
                         Z = selector([int(os.path.split(name)[1].split('-')[1][:-6][1:])
                                       for name in filenames])
                         name = hghtemplate % (symbol, Z)
+                    elif pps == 'tm':
+                        selector = max # Semicore - highest electron count
+                        # currently only one version of psp per atom
+                        name = hghtemplate % (number, symbol.lower, '*')
                     else:
                         assert pps == 'hgh.sc'
                         selector = max # Semicore - highest electron count
