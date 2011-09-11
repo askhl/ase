@@ -6,7 +6,6 @@ def get_bandgap(atoms, mode='direct', spin=0):
     indirect_bandgap = None
     nelect = calculator.get_number_of_electrons()
     nband = calculator.get_number_of_bands()
-    f = calculator.get_fermi_level()
     magmom = calculator.get_magnetic_moment(atoms)
     occupations = np.array(calculator.get_occupation_numbers(spin=spin))
     nhomo = len([a for a in occupations if a > 0.0]) - 1

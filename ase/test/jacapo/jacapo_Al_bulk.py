@@ -14,7 +14,7 @@ from ase.utils.compound_test import BatchTest
 from ase.utils.compound_test.periodic_system_jacapo import \
      JACAPOEnergyPeriodicSystemTest
 
-from ase.test.gpaw_Al_bulk import data
+from ase.test.gpaw.gpaw_Al_bulk import data
 
 ref = {
     'Al': {

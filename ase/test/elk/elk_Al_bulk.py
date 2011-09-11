@@ -1,24 +1,24 @@
 from ase.test import NotAvailable
 
 try:
-    from ase.test.vasp_installed import vasp_installed
-    vasp_installed()
+    from ase.test.elk_installed import elk_installed
+    elk_installed()
 except NotAvailable:
-    raise NotAvailable('Vasp required')
+    raise NotAvailable('ELK required')
 
 from ase.utils.compound_test import get_atomization_reactions, \
      calculate_reaction_energies, write_csv
 
 from ase.utils.compound_test import BatchTest
 
-from ase.utils.compound_test.periodic_system_vasp import \
-     VASPEnergyPeriodicSystemTest
+from ase.utils.compound_test.periodic_system_elk import \
+     ELKEnergyPeriodicSystemTest
 
-from ase.test.gpaw_Al_bulk import data
+from ase.test.gpaw.gpaw_Al_bulk import data
 
 ref = {
     'Al': {
-    'energy': -14.158018999999999,
+    'energy': -26429.417457395077,
     },
     }
 
@@ -30,22 +30,20 @@ def main():
     kwargs = dict(
         vacuum=0.0,
         xc='PBE',
-        algo='Fast', # may give wrong energies
-        ediff=1.0e-3,
-        prec='low',
-        ismear=-1,
-        sigma=0.1,
-        # band parallelization: http://cms.mpi.univie.ac.at/vasp/guide/node138.html
-        lplane=False,
-        npar=1,
+        autormt=True,
+        autokpt=False,
+        swidth=0.1, # eV
+        stype=3, # Fermi
+        rgkmax=4.5,
+        gmaxvr=9,
         kpts=[2, 2, 2],
         )
 
-    dir = 'VASP_Al_bulk'
+    dir = 'ELK_Al_bulk'
     identifier = 'energy'
 
-    etest = VASPEnergyPeriodicSystemTest(dir + '/' + identifier,
-                                         data=data, **kwargs)
+    etest = ELKEnergyPeriodicSystemTest(dir + '/' + identifier,
+                                        data=data, **kwargs)
 
     betest = BatchTest(etest)
 
@@ -64,6 +62,10 @@ def main():
     db_data = {}
     for formula in formulas:
         try:
+            # currently ase.utils.compound_test.write_db
+            # cannot be used for elk due to different arguments
+            # in calculator methods compared to other calculators (gpaw, ...)
+            # See point 7. of https://trac.fysik.dtu.dk/projects/ase/ticket/27
             db_data[formula] = {}
             import cmr
             filename = os.path.join(dir, identifier + '.' + formula)

@@ -1,24 +1,24 @@
 from ase.test import NotAvailable
 
 try:
-    from ase.test.fleur_installed import fleur_installed
-    fleur_installed()
+    from ase.test.vasp_installed import vasp_installed
+    vasp_installed()
 except NotAvailable:
-    raise NotAvailable('FLEUR required')
+    raise NotAvailable('Vasp required')
 
 from ase.utils.compound_test import get_atomization_reactions, \
      calculate_reaction_energies, write_csv
 
 from ase.utils.compound_test import BatchTest
 
-from ase.utils.compound_test.periodic_system_fleur import \
-     FLEUREnergyPeriodicSystemTest
+from ase.utils.compound_test.periodic_system_vasp import \
+     VASPEnergyPeriodicSystemTest
 
-from ase.test.gpaw_Al_bulk import data
+from ase.test.gpaw.gpaw_Al_bulk import data
 
 ref = {
     'Al': {
-    'energy': -26429.277732777817,
+    'energy': -14.158018999999999,
     },
     }
 
@@ -30,14 +30,22 @@ def main():
     kwargs = dict(
         vacuum=0.0,
         xc='PBE',
+        algo='Fast', # may give wrong energies
+        ediff=1.0e-3,
+        prec='low',
+        ismear=-1,
+        sigma=0.1,
+        # band parallelization: http://cms.mpi.univie.ac.at/vasp/guide/node138.html
+        lplane=False,
+        npar=1,
         kpts=[2, 2, 2],
         )
 
-    dir = 'FLEUR_Al_bulk'
+    dir = 'VASP_Al_bulk'
     identifier = 'energy'
 
-    etest = FLEUREnergyPeriodicSystemTest(dir + '/' + identifier,
-                                          data=data, **kwargs)
+    etest = VASPEnergyPeriodicSystemTest(dir + '/' + identifier,
+                                         data=data, **kwargs)
 
     betest = BatchTest(etest)
 
@@ -56,10 +64,6 @@ def main():
     db_data = {}
     for formula in formulas:
         try:
-            # currently ase.utils.compound_test.write_db
-            # cannot be used for fleur due to different arguments
-            # in calculator methods compared to other calculators (gpaw, ...)
-            # See point 7. of https://trac.fysik.dtu.dk/projects/ase/ticket/27
             db_data[formula] = {}
             import cmr
             filename = os.path.join(dir, identifier + '.' + formula)

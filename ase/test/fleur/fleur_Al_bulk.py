@@ -1,24 +1,24 @@
 from ase.test import NotAvailable
 
 try:
-    from ase.test.elk_installed import elk_installed
-    elk_installed()
+    from ase.test.fleur_installed import fleur_installed
+    fleur_installed()
 except NotAvailable:
-    raise NotAvailable('ELK required')
+    raise NotAvailable('FLEUR required')
 
 from ase.utils.compound_test import get_atomization_reactions, \
      calculate_reaction_energies, write_csv
 
 from ase.utils.compound_test import BatchTest
 
-from ase.utils.compound_test.periodic_system_elk import \
-     ELKEnergyPeriodicSystemTest
+from ase.utils.compound_test.periodic_system_fleur import \
+     FLEUREnergyPeriodicSystemTest
 
-from ase.test.gpaw_Al_bulk import data
+from ase.test.gpaw.gpaw_Al_bulk import data
 
 ref = {
     'Al': {
-    'energy': -26429.417457395077,
+    'energy': -26429.277732777817,
     },
     }
 
@@ -30,20 +30,14 @@ def main():
     kwargs = dict(
         vacuum=0.0,
         xc='PBE',
-        autormt=True,
-        autokpt=False,
-        swidth=0.1, # eV
-        stype=3, # Fermi
-        rgkmax=4.5,
-        gmaxvr=9,
         kpts=[2, 2, 2],
         )
 
-    dir = 'ELK_Al_bulk'
+    dir = 'FLEUR_Al_bulk'
     identifier = 'energy'
 
-    etest = ELKEnergyPeriodicSystemTest(dir + '/' + identifier,
-                                        data=data, **kwargs)
+    etest = FLEUREnergyPeriodicSystemTest(dir + '/' + identifier,
+                                          data=data, **kwargs)
 
     betest = BatchTest(etest)
 
@@ -63,7 +57,7 @@ def main():
     for formula in formulas:
         try:
             # currently ase.utils.compound_test.write_db
-            # cannot be used for elk due to different arguments
+            # cannot be used for fleur due to different arguments
             # in calculator methods compared to other calculators (gpaw, ...)
             # See point 7. of https://trac.fysik.dtu.dk/projects/ase/ticket/27
             db_data[formula] = {}

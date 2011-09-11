@@ -1,3 +1,5 @@
+import os
+
 import platform
 import sys
 import unittest
@@ -46,7 +48,7 @@ class ScriptTestCase(unittest.TestCase):
         unittest.TestCase.__init__(self, methodname)
         self.filename = filename
         self.display = display
-        
+
     def testfile(self):
         try:
             execfile(self.filename, {'display': self.display})
@@ -71,8 +73,20 @@ def test(verbosity=1, dir=None, display=True, stream=sys.stdout):
     ts = unittest.TestSuite()
     if dir is None:
         dir = __path__[0]
-    tests = glob(dir + '/*.py')
+    files = glob(dir + '/*')
+    calctests = []
+    tests = []
+    for f in files:
+        if os.path.isdir(f):
+            # add calculators subdirectories
+            calctests.extend(glob(os.path.join(dir, f) + '/*.py'))
+        else:
+            # add py files in dir
+            if f.endswith('.py'):
+                tests.append(f)
     tests.sort()
+    calctests.sort()
+    tests.extend(calctests) # run calculator tests at the end
     for test in tests:
         if test.endswith('__init__.py'):
             continue
@@ -90,7 +104,7 @@ def test(verbosity=1, dir=None, display=True, stream=sys.stdout):
 
     from ase.utils import devnull
     sys.stdout = devnull
-    
+
     ttr = unittest.TextTestRunner(verbosity=verbosity, stream=stream)
     results = ttr.run(ts)
 
@@ -104,7 +118,7 @@ class World:
     def __init__(self, size):
         self.size = size
         self.data = {}
-        
+
     def get_rank(self, rank):
         return CPU(self, rank)
 
@@ -123,7 +137,7 @@ class CPU:
         while (rank, self.rank) not in self.world.data:
             pass
         x[:] = self.world.data.pop((rank, self.rank))
-    
+
     def sum(self, x):
         if not isinstance(x, np.ndarray):
             x = np.array([x])

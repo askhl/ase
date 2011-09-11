@@ -1,5 +1,8 @@
 import os
-from ase.data.molecules import molecule
+
+from ase.utils.compound_test import MoleculeTest
+molecule = MoleculeTest().compound
+
 from ase.io.bader import attach_charges
 
 fname = 'ACF.dat'
@@ -24,5 +27,4 @@ attach_charges(atoms, fname)
 os.remove(fname)
 
 for atom in atoms:
-    print 'Atom', atom.symbol, 'Bader charge', atom.charge 
-
+    print 'Atom', atom.symbol, 'Bader charge', atom.charge

@@ -88,7 +88,7 @@ class Abinit:
         self.mix = mix
         self.pps = pps
         self.toldfe = toldfe
-        if not pps in ['fhi', 'hgh', 'hgh.sc']:
+        if not pps in ['fhi', 'hgh', 'hgh.sc', 'hghk', 'paw']:
             raise ValueError('Unexpected PP identifier %s' % pps)
 
         self.converged = False
@@ -135,6 +135,12 @@ class Abinit:
             pps = self.pps
             if pps == 'fhi':
                 name = '%02d-%s.%s.fhi' % (number, symbol, xcname)
+            elif pps in ('paw'):
+                hghtemplate = '%s-%s-%s.paw' # E.g. "H-GGA-hard-uspp.paw"
+                name = hghtemplate % (symbol, xcname, '*')
+            elif pps in ('hghk'):
+                hghtemplate = '%s-q%s.k.hgh' # E.g. "Co-q17.k.hgh"
+                name = hghtemplate % (symbol, '*')
             elif pps in ('hgh', 'hgh.sc'):
                 hghtemplate = '%d%s.%s.hgh' # E.g. "42mo.6.hgh"
                 # There might be multiple files with different valence
@@ -147,19 +153,34 @@ class Abinit:
 
             found = False
             for path in pppaths:
-                if pps.startswith('hgh'):
+                if pps.startswith('paw') or pps.startswith('hgh'):
                     filenames = glob(join(path, name))
                     if not filenames:
                         continue
                     assert len(filenames) in [0, 1, 2]
-                    if pps == 'hgh':
+                    if pps == 'paw':
+                        selector = max # Semicore or hard
+                        # warning: see download.sh in 
+                        # abinit-pseudopotentials*tar.gz for additional information!
+                        S = selector([str(os.path.split(name)[1].split('-')[2][:-4])
+                                      for name in filenames])
+                        name = hghtemplate % (symbol, xcname, S)
+                    elif pps == 'hgh':
                         selector = min # Lowest possible valence electron count
+                        Z = selector([int(os.path.split(name)[1].split('.')[1])
+                                      for name in filenames])
+                        name = hghtemplate % (number, symbol.lower(), str(Z))
+                    elif pps == 'hghk':
+                        selector = min # Semicore - highest electron count
+                        Z = selector([int(os.path.split(name)[1].split('-')[1][:-6][1:])
+                                      for name in filenames])
+                        name = hghtemplate % (symbol, Z)
                     else:
                         assert pps == 'hgh.sc'
                         selector = max # Semicore - highest electron count
-                    Z = selector([int(os.path.split(name)[1].split('.')[1])
-                                  for name in filenames])
-                    name = hghtemplate % (number, symbol.lower(), str(Z))
+                        Z = selector([int(os.path.split(name)[1].split('.')[1])
+                                      for name in filenames])
+                        name = hghtemplate % (number, symbol.lower(), str(Z))
                 filename = join(path, name)
                 if isfile(filename) or islink(filename):
                     found = True
@@ -486,7 +507,7 @@ class Abinit:
            spinname = 'SPIN UP'.lower()
         # number of lines of eigenvalues/occupations for a kpt
         nband = self.get_number_of_bands()
-        n_entry_lines = max(1, int(nband/self.n_entries_float))
+        n_entry_lines = max(1, int((nband - 0.1)/self.n_entries_float) + 1)
         #
         filename = self.label + '.txt'
         text = open(filename).read().lower()
@@ -519,6 +540,9 @@ class Abinit:
 
         n_kpts = int(text_list[0].split('nkpt=')[1].strip().split()[0])
 
+        # get rid of the "eigenvalues line"
+        text_list = text_list[1:]
+
         # join text eigenvalues description with eigenvalues
         # or occupation numbers for kpt# with occupations
         contains_occupations = False
@@ -535,7 +559,7 @@ class Abinit:
             range_kpts = n_kpts
         #
         values_list = []
-        offset = 1
+        offset = 0
         for kpt_entry in range(range_kpts):
             full_line = ''
             for entry_line in range(n_entry_lines+1):

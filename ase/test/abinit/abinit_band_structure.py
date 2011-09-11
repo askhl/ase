@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 
 from ase.test import NotAvailable
@@ -25,16 +27,6 @@ def flatten(x):
 
 def array_almost_equal(a1, a2, tol=np.finfo(type(1.0)).eps):
     return (np.abs(a1 - a2) < tol).all()
-
-def plot_save(directory_name, out_prefix):
-    from os.path import exists, sep
-    assert exists(directory_name)
-    import matplotlib
-    matplotlib.use('Agg')
-    from matplotlib import pylab
-
-    pylab.savefig(directory_name + sep + out_prefix +'.png')
-
 
 ref = {
     'e_fermi': 0.555928813242,
@@ -161,11 +153,11 @@ for k in keys:
 
 try:
     import matplotlib
-    matplotlib.use('Agg')
     from matplotlib import pylab
 
     for n in range(nband2):
         pylab.plot(kpts2[:, 0], eigs[n], '.m')
-    plot_save(".", label)
+
+    pylab.savefig("." + os.path.sep + label +'.png')
 except ImportError:
     raise NotAvailable('matplotlib required')

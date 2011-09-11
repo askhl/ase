@@ -1,26 +1,17 @@
-#!/usr/bin/python
 """Simple shallow test of the CASTEP interface"""
+
+from ase.test import NotAvailable
+
+try:
+    from ase.test.castep_installed import castep_installed
+    castep_installed()
+except NotAvailable:
+    raise NotAvailable('Castep required')
 
 import os
 import shutil
 import tempfile
 import traceback
-
-from ase.test import NotAvailable
-
-# check if CASTEP_COMMAND is set a environment variable
-
-if not os.environ.has_key('CASTEP_COMMAND'):
-    print("WARNING: Environment variable CASTEP_COMMAND is not set")
-    print("Will set CASTEP_COMMAND  = castep for the sake of this test")
-    print("Please change it if this does not run castep in your environment")
-    os.environ['CASTEP_COMMAND'] = 'castep'
-
-
-if not (os.system('which %s' % os.environ['CASTEP_COMMAND']) == 0):
-    raise NotAvailable("""Could not find CASTEP. If you have it
-                          installed make sure, you set the CASTEP_COMMAND
-                          environment variable correctly""")
 
 
 # check if we can import everything
