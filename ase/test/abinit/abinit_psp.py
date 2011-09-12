@@ -34,6 +34,7 @@ ref = {
     'fhi': -31.803974294357225,
     'hgh.k': -31.234649707555263,
     'hgh': -31.234277396315729, # MDTMP: uses LDA_HGH psp
+    'tm': -32.15445642858279, #  MDTMP: uses LDA_TM psp
     'paw': -32.395413194274063,
     },
     'LDA':
@@ -41,6 +42,7 @@ ref = {
     'fhi': -31.265659502067816,
     'hgh.k': -30.712766446448665, # MDTMP: uses GGA_HGHK psp
     'hgh': -30.712407050439836,
+    'tm': -31.593771991660827,
     'paw': -31.820373215999961,
     },
     }
@@ -65,7 +67,7 @@ for f in formulas:
 
 # analyse results
 
-for xc in energies.keys():
-    for p in energies[xc].keys():
+for xc in ref.keys():
+    for p in ref[xc].keys():
         diff = energies[xc][p] - ref[xc][p] # eV
         assert abs(diff) < 0.01, k + ': ' + str(diff)

@@ -183,7 +183,7 @@ class Abinit:
                     elif pps == 'tm':
                         selector = max # Semicore - highest electron count
                         # currently only one version of psp per atom
-                        name = hghtemplate % (number, symbol.lower, '*')
+                        name = hghtemplate % (number, symbol.lower(), '')
                     else:
                         assert pps == 'hgh.sc'
                         selector = max # Semicore - highest electron count
