@@ -24,7 +24,7 @@ class VASPMoleculeTest(MoleculeTest):
         # leaking electons problem for atoms
         # http://cms.mpi.univie.ac.at/vasp-forum/forum_viewtopic.php?3.92
         # ferwe/ferdo is the solution, but this forces one to set nbands
-        assert kwargs.get('nbands', None), 'set nbands'
+        #assert kwargs.get('nbands', None), 'set nbands' # MDTMP
         if not kwargs.get('setups', None): # set better setups
             # http://cms.mpi.univie.ac.at/vasp/vasp/node243.html
             # http://cms.mpi.univie.ac.at/vasp/vasp/PAW_potentials.html
@@ -93,26 +93,27 @@ class VASPMoleculeTest(MoleculeTest):
         calc.set(nelect=nelect)
         # set the number of bands
         nbands = self.parameters.get('nbands', None)
-        assert not nbands is None, 'set nbands'
-        if nbands < 0:
-            nbands = int(0.5*nelect) - nbands
-        calc.set(nbands=nbands)
-        # set ferwe/ferdo for spin polarized systems to avoid missing electrons
-        # http://cms.mpi.univie.ac.at/vasp-forum/forum_viewtopic.php?3.92
-        if (system.get_initial_magnetic_moments().any() and
-            self.parameters.get('sigma', 0.2) == 0.0): # only with width of 0.0
-            # used in hack to set ferwe/ferdo to assure occupations
-            assert abs(nbands) > 0
-            # http://cms.mpi.univie.ac.at/vasp-forum/forum_viewtopic.php?4.1434
-            nferwe = int((nelect + nupdown)/2.)
-            ferwe = [1 for a in range(nferwe)]
-            for n in range(nbands - nferwe):
-                ferwe.append(0)
-            ferdo = [1 for a in range(int(nferwe - nupdown))]
-            for n in range(nbands - int(nferwe - nupdown)):
-                ferdo.append(0)
-            calc.set(ferwe=ferwe)
-            calc.set(ferdo=ferdo)
+        if not nbands is None:
+            assert not nbands is None, 'set nbands'
+            if nbands < 0:
+                nbands = int(0.5*nelect) - nbands
+            calc.set(nbands=nbands)
+            # set ferwe/ferdo for spin polarized systems to avoid missing electrons
+            # http://cms.mpi.univie.ac.at/vasp-forum/forum_viewtopic.php?3.92
+            if (system.get_initial_magnetic_moments().any() and
+                self.parameters.get('sigma', 0.2) == 0.0): # only with width of 0.0
+                # used in hack to set ferwe/ferdo to assure occupations
+                assert abs(nbands) > 0
+                # http://cms.mpi.univie.ac.at/vasp-forum/forum_viewtopic.php?4.1434
+                nferwe = int((nelect + nupdown)/2.)
+                ferwe = [1 for a in range(nferwe)]
+                for n in range(nbands - nferwe):
+                    ferwe.append(0)
+                ferdo = [1 for a in range(int(nferwe - nupdown))]
+                for n in range(nbands - int(nferwe - nupdown)):
+                    ferdo.append(0)
+                calc.set(ferwe=ferwe)
+                calc.set(ferdo=ferdo)
 
         return calc
 
