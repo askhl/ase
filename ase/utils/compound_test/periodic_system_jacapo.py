@@ -6,7 +6,7 @@ from ase.utils.compound_test import PeriodicSystemTest
 from ase.utils.compound_test import EnergyPeriodicSystemTest, \
      GeometryPeriodicSystemTest
 
-from ase.calculators.jacapo import Jacapo
+from ase.calculators.jacapo import Jacapo as Calculator
 
 from ase.dft.kpoints import get_kpoints_guess
 

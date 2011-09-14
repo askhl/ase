@@ -1670,7 +1670,9 @@ atoms_g22 = list(set(atoms_g22))
 # add remaining atoms from G2_1
 from ase.utils.compound_test import MoleculeTest
 
-G2_1 = MoleculeTest()
+from ase.data.G2_1 import data as data1
+
+G2_1 = MoleculeTest(data=data1)
 atoms_g21 = G2_1.get_formulas(natoms=1)
 
 for a in atoms_g22:

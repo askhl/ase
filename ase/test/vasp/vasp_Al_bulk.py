@@ -35,10 +35,12 @@ def main():
         prec='low',
         ismear=-1,
         sigma=0.1,
-        # band parallelization: http://cms.mpi.univie.ac.at/vasp/guide/node138.html
+        kpts=[2, 2, 2],
+        # band parallelization:
+        # http://cms.mpi.univie.ac.at/vasp/guide/node138.html
+        # without npar=1 you get wrong number of bands in parallel!
         lplane=False,
         npar=1,
-        kpts=[2, 2, 2],
         )
 
     dir = 'VASP_Al_bulk'

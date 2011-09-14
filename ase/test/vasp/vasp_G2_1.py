@@ -48,7 +48,9 @@ kwargs = dict(
     sigma=0.0,
     addgrid=True, # http://cms.mpi.univie.ac.at/vasp-forum/forum_viewtopic.php?4.383
     lasph=True, # DOI: 10.1063/1.1926272: Section IV
-    # band parallelization: http://cms.mpi.univie.ac.at/vasp/guide/node138.html
+    # band parallelization:
+    # http://cms.mpi.univie.ac.at/vasp/guide/node138.html
+    # without npar=1 you get wrong number of bands in parallel!
     lplane=False,
     npar=1,
     )

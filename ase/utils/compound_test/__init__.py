@@ -203,6 +203,7 @@ class CompoundTest:
         else:
             assert natoms > 0, 'Error: number of atoms must be positive: ' + str(natoms)
             l = [s for s in self.data.keys() if (len(self.compound(s)) == natoms)]
+        l = list(set(l)) # unique
         l.sort()
         return l
 
@@ -380,6 +381,7 @@ class PeriodicSystemTest(CompoundTest):
             cell = np.ravel(cell)
             cell[-1] += self.vacuum # z-axis
             cell.resize(shape)
+            system.set_cell(cell)
             # MDTMP: system.center(vacuum=self.vacuum, axis=2)
             # cannot be used as vacuum is added related to atoms not the cell
         if not self.cell is None:
@@ -713,7 +715,7 @@ def write_db(filename, system, **kwargs):
         # the ones below may not exist in all calculators
         params.update({
             # calculator
-            "kpts": get_monkhorst_pack_size_and_offset(calc.get_ibz_k_points())[0],
+            #"kpts": get_monkhorst_pack_size_and_offset(calc.get_ibz_k_points())[0], # MDTMP - fails sometimes!
             "width": calc.get_electronic_temperature(), # eV
             "niter": calc.get_number_of_iterations(),
             "nelect": calc.get_number_of_electrons(),
