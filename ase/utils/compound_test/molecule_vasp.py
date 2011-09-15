@@ -68,8 +68,8 @@ class VASPMoleculeTest(MoleculeTest):
             system.set_cell(cell)
         system.center()
         #
+        # http://cms.mpi.univie.ac.at/vasp/vasp/Monopole_Dipole_Quadrupole_corrections_NELECT_IDIPOL_DIPOL_LMONO_LDIPOL_EPSILON.html
         if len(system) > 1:
-            # http://cms.mpi.univie.ac.at/vasp/guide/node143.html
             self.parameters['ldipol'] = True
             self.parameters['idipol'] = 4
             self.parameters['dipol'] = [0.5, 0.5, 0.5]

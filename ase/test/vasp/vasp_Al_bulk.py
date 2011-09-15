@@ -37,7 +37,7 @@ def main():
         sigma=0.1,
         kpts=[2, 2, 2],
         # band parallelization:
-        # http://cms.mpi.univie.ac.at/vasp/guide/node138.html
+        # http://cms.mpi.univie.ac.at/vasp/vasp/Parallelisation_NPAR_tag_LPLANE_tag.html
         # without npar=1 you get wrong number of bands in parallel!
         lplane=False,
         npar=1,
