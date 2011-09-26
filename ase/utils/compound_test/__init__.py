@@ -33,6 +33,7 @@ if 0: # other optimizers
     from ase.optimize.bfgs import BFGS as QuasiNewton
 from ase.parallel import barrier, rank, paropen
 from ase.parallel import paropen as open
+#from ase.data.molecules import molecule
 
 
 class BatchTest:
@@ -54,12 +55,12 @@ class BatchTest:
         barrier()
         try:
             open(filename, 'w').close() # Empty file
-            system, calc = self.test.setup(formula)
+            system = self.test.setup(formula)
             self.test.run(formula, system, filename)
             if rank == 0:
                 print >> self.txt, 'OK!'
             self.txt.flush()
-        except self.test.exceptions:
+        except 'asdfg':
             if rank == 0:
                 print >> self.txt, 'Failed!'
             traceback.print_exc(file=self.txt)
@@ -133,9 +134,7 @@ class CompoundTest:
     setup_calculator method.  Most methods can be overridden to
     provide highly customized behaviour.  """
 
-    def __init__(self, name='test',
-                 vacuum=8.0, cell=None,
-                 exceptions=None, data=None):
+    def __init__(self, calculator, name='test'):
         """Create a test.
 
         The name parameter will be part of all output files generated
@@ -154,47 +153,13 @@ class CompoundTest:
         (sufficient to create an Atoms object instance).
         If data is None then ase.data.G2 is used.  """
 
+        self.calculator = calculator
+
         dir, path = os.path.split(name)
         self.dir = dir
         self.identifier = path
         self.name = name
-        assert not (cell is None and vacuum is None), 'Error: set either vacuum or/and cell'
-        if not vacuum is None:
-            self.vacuum = vacuum
-        else:
-            self.vacuum = None
-        if not cell is None:
-            self.cell = cell
-        else:
-            self.cell = None
-        if exceptions is None:
-            exceptions = ()
-        self.exceptions = exceptions
-        if data is None:
-            from ase.data.G2 import data as g2
-            self.data = g2
-        else:
-            self.data = data
 
-    def compound(self, name, **kwargs):
-        """Create formula from the database."""
-        data = self.data
-        if name not in data.keys():
-            raise NotImplementedError('System %s not in database.'
-                                      % (name))
-        d = data[name]
-        if 'magmoms' not in kwargs:
-            kwargs['magmoms'] = d['magmoms']
-        if 'charges' not in kwargs:
-            kwargs['charges'] = d['charges']
-        if 'cell' not in kwargs:
-            try:
-                kwargs['cell'] = d['cell']
-            except KeyError:
-                pass # cell not specified
-        return Atoms(symbols=d['symbols'],
-                     positions=d['positions'],
-                     **kwargs)
 
     def get_formulas(self, natoms=None):
         """Get sorted list of systems with given number of atoms in database.  """
@@ -211,7 +176,7 @@ class CompoundTest:
         """Create a new calculator.
 
         Every implementation has to provide this method."""
-        raise NotImplementedError
+        return self.calculator(system, formula, self)
 
     def setup_system(self, formula):
         """Create an Atoms object from the given formula.
@@ -232,7 +197,7 @@ class CompoundTest:
         system = self.setup_system(formula)
         calc = self.setup_calculator(system, formula)
         system.set_calculator(calc)
-        return system, calc
+        return system
 
     def get_filename(self, formula, extension=''):
         """Returns the filename for a test result file.
@@ -307,23 +272,49 @@ class MoleculeTest(CompoundTest):
     setup_calculator method.  Most methods can be overridden to
     provide highly customized behaviour.  """
 
-    def __init__(self, name='test',
+    def __init__(self, calculator, name='test',
                  vacuum=8.0, cell=None,
-                 exceptions=None, data=None):
-        CompoundTest.__init__(self, name=name, vacuum=vacuum, cell=cell,
-                             exceptions=exceptions, data=data)
+                 data=None):
+        CompoundTest.__init__(self, calculator, name)
+
+        self.vacuum = vacuum
+        self.cell = cell
+
+        if data is None:
+            from ase.data.G2_1 import data
+        self.data = data
+
+    def compound(self, name, **kwargs):
+        """Create formula from the database."""
+        data = self.data
+        if name not in data.keys():
+            raise NotImplementedError('System %s not in database.'
+                                      % (name))
+        d = data[name]
+        if 'magmoms' not in kwargs:
+            kwargs['magmoms'] = d['magmoms']
+        if 'charges' not in kwargs:
+            kwargs['charges'] = d['charges']
+        if 'cell' not in kwargs:
+            try:
+                kwargs['cell'] = d['cell']
+            except KeyError:
+                pass # cell not specified
+        return Atoms(symbols=d['symbols'],
+                     positions=d['positions'],
+                     **kwargs)
 
     def setup_system(self, formula):
         """Create an Atoms object from the given formula.
 
         By default this will be loaded from the database, setting
         the cell size by means of the molecule test's vacuum parameter."""
+        #system = molecule(formula)
         system = self.compound(formula)
-        if not self.vacuum is None:
+        if self.vacuum is not None:
             system.center(vacuum=self.vacuum)
-        if not self.cell is None:
+        if self.cell is not None:
             system.set_cell(self.cell)
-        system.set_pbc([1, 1, 1]) # must be set otherwise fleur uses film
         return system
 
     def check_system(self, system, formula):

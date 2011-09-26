@@ -12,26 +12,15 @@ from ase.units import kcal, mol
 from ase.utils.compound_test import get_atomization_reactions, \
      calculate_reaction_energies, write_csv
 
-from ase.utils.compound_test import import_module
+#from ase.utils.compound_test import import_module
 
 from ase.utils.compound_test import BatchTest
 
-from ase.utils.compound_test.molecule_gpaw import \
-     GPAWEnergyMoleculeTest as Test
+from ase.utils.compound_test import EnergyMoleculeTest as Test
 
-from gpaw.mixer import Mixer
+from gpaw import GPAW
 
 # This is how one may setup a special calculator
-
-class SpecialTest(Test):
-
-    def setup_calculator(self, system, formula):
-        calc = Test.setup_calculator(self, system, formula)
-        # back to defaults
-        calc.set(eigensolver=None)
-        calc.set(convergence={})
-        calc.set(mixer=Mixer())
-        return calc
 
 ref = {
     'O2':
@@ -54,7 +43,6 @@ ea_ref = {
     }
 
 kwargs = dict(
-    vacuum=2.5,
     xc='PBE',
     h=0.3,
     mode='lcao',
@@ -64,28 +52,40 @@ kwargs = dict(
     fixmom=True,
     )
 
+def gpaw(system, formula, test):
+    #
+    # http://cms.mpi.univie.ac.at/vasp-forum/forum_viewtopic.php?4.8980.0#9073
+    system.cell[1, 1] += 0.01
+    system.cell[2, 2] += 0.02
+    system.center()
+    
+    return GPAW(txt=test.get_filename(formula, extension='txt'),
+                hund=(len(system) == 1),
+                charge=sum(system.get_charges()),
+                **kwargs)
+
 database = 'G2_1'
 
-modulepath = 'ase.data.' + database
-module = import_module(modulepath)
+#modulepath = 'ase.data.' + database
+#module = import_module(modulepath)
 
-dir = database + '_GPAW'
+dir = database + '_GPAWb'
 
 identifier = 'energy'
 
-etest = SpecialTest(dir + '/' + identifier, data=module.data, **kwargs)
+etest = Test(gpaw, dir + '/' + identifier, vacuum=2.5)
 
 betest = BatchTest(etest)
 
-dimers = etest.get_formulas(natoms=2)
+#dimers = etest.get_formulas(natoms=2)
 
-molecule = 'O2'
-assert molecule in dimers
+#molecule = 'O2'
+#assert molecule in dimers
 
-formulas = [a.symbol for a in etest.compound(molecule)] # constituing atoms
-formulas = list(set(formulas)) # unique
-formulas.append(molecule)
-
+#formulas = [a.symbol for a in etest.compound(molecule)] # constituing atoms
+#formulas = list(set(formulas)) # unique
+#formulas.append(molecule)
+formulas = ['O','O2']
 betest.run(formulas, fraction='1/1')
 
 # analyse results
