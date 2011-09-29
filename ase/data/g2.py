@@ -25,12 +25,10 @@ Experimental ionization potentials are from http://srdata.nist.gov/cccbdb/.
 For details about G2-1 and G2-2 sets see doi:10.1063/1.477422.
 """
 
-from ase.atoms import Atoms, string2symbols
+from ase.data.g2_1 import data
+from ase.data.g2_2 import data as data_g2_2
 
-from ase.data.G2_1 import data
-from ase.data.G2_2 import data as data_G2_2
+data.update(data_g2_2)
 
-data.update(data_G2_2)
-
-from ase.data.G2_2 import get_ionization_energy
-from ase.data.G2_2 import get_atomization_energy
+from ase.data.g2_2 import get_ionization_energy
+from ase.data.g2_2 import get_atomization_energy

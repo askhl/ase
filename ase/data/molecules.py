@@ -1,19 +1,19 @@
 def get_ionization_energy(name, vertical=True):
-    "Deprecated, use ase.data.G2.get_ionization_energy instead."
+    "Deprecated, use ase.data.g2.get_ionization_energy instead."
     import warnings
     warnings.warn('ase.data.molecules.get_ionization_energy is deprecated. '
-                  ' Please use ase.data.G2.get_ionization_energy' \
+                  ' Please use from ase.data.g2 import get_ionization_energy' \
                   ' instead.', DeprecationWarning, stacklevel=2)
-    from ase.data.G2 import get_ionization_energy
+    from ase.data.g2 import get_ionization_energy
     return get_ionization_energy(name, vertical)
 
 def get_atomization_energy(name):
-    "Deprecated, use ase.data.G2.get_atomization_energy instead."
+    "Deprecated, use ase.data.g2.get_atomization_energy instead."
     import warnings
     warnings.warn('ase.data.molecules.get_atomization_energy is deprecated. '
-                  ' Please use ase.data.G2.get_atomization_energy' \
+                  ' Please use from ase.data.g2 import get_atomization_energy' \
                   ' instead.', DeprecationWarning, stacklevel=2)
-    from ase.data.G2 import get_atomization_energy
+    from ase.data.g2 import get_atomization_energy
     return get_atomization_energy(name)
 
 def molecule(name, **kwargs):
@@ -21,10 +21,10 @@ def molecule(name, **kwargs):
     import warnings
     warnings.warn('ase.data.molecules.molecule is deprecated. '
                   'Please use:' \
-                  ' from ase.utils.compound_test import MoleculeTest; molecule = MoleculeTest().compound' \
+                  ' from ase.structure import molecule' \
                   ' instead.', DeprecationWarning, stacklevel=2)
-    from ase.utils.compound_test import MoleculeTest
-    return MoleculeTest().compound(name, **kwargs)
+    from ase.structure import molecule
+    return molecule(name, **kwargs)
 
 def latex(name):
     """Convert name to LaTeX"""

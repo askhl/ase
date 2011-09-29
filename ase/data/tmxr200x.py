@@ -210,18 +210,14 @@ def pdftotext(filename):
     os.system('pdftotext -raw -nopgbrk '+ filename)
     return os.path.splitext(filename)[0] + '.txt'
 
-from ase.data.GMTKN30 import format_data
+from ase.data.gmtkn30 import format_data
 
 def main():
     if not os.path.isdir('TMXR200X'):
         os.makedirs('TMXR200X')
     #for database in ['TM1R2006']:
     for database in database_files.keys():
-        try:
-            from gpaw.output import initialize_text_stream
-            fh, firsttime = initialize_text_stream(database_files[database]['module'] + '.py', rank=0)
-        except ImportError:
-            fh = open(database_files[database]['module'] + '.py', 'w')
+        fh = open(database_files[database]['module'].lower() + '.py', 'w')
         fh.write('# Computer generated code! Hands off!\n')
         fh.write('# Generated: ' + str(datetime.date.today()) + '\n')
         fh.write('from numpy import array\n')

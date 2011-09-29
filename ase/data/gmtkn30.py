@@ -298,11 +298,7 @@ def main():
         os.makedirs('GMTKN30/strucs')
     for database in ['G2RC', 'WATER27']:
     #for database in database_files.keys(): # all databases
-        try:
-            from gpaw.output import initialize_text_stream
-            fh, firsttime = initialize_text_stream(database_files[database]['module'] + '.py', rank=0)
-        except ImportError:
-            fh = open(database_files[database]['module'] + '.py', 'w')
+        fh = open(database_files[database]['module'].lower() + '.py', 'w')
         fh.write('# Computer generated code! Hands off!\n')
         fh.write('# Generated: ' + str(datetime.date.today()) + '\n')
         fh.write('from numpy import array\n')

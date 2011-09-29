@@ -1,7 +1,6 @@
 import os
 
-from ase.utils.compound_test import MoleculeTest
-molecule = MoleculeTest().compound
+from ase.structure import molecule
 
 from ase.io.bader import attach_charges
 

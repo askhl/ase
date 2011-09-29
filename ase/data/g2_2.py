@@ -1668,16 +1668,13 @@ for f in data.keys():
 atoms_g22 = list(set(atoms_g22))
 
 # add remaining atoms from G2_1
-from ase.utils.compound_test import MoleculeTest
+from ase.structure import molecule
 
-from ase.data.G2_1 import data as data1
-
-G2_1 = MoleculeTest(data=data1)
-atoms_g21 = G2_1.get_formulas(natoms=1)
+from ase.data.g2_1 import data as data1
 
 for a in atoms_g22:
     if not a in data.keys():
-        data[a] = G2_1.data[a]
+        data[a] = data1[a]
 
-from ase.data.G2_1 import get_ionization_energy
-from ase.data.G2_1 import get_atomization_energy
+from ase.data.g2_1 import get_ionization_energy
+from ase.data.g2_1 import get_atomization_energy
