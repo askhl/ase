@@ -270,15 +270,13 @@ def molecule(name, data=None, **kwargs):
         raise NotImplementedError('%s not in data.' % (name))
     d = data[name]
     args = {}
-    # all Atoms constructor arguments
+    # all Atoms constructor arguments relevant for a molecule
+    # setup using center(vacuum=)
     # https://trac.fysik.dtu.dk/projects/ase/ticket/84
     for k in [
         'symbols', 'positions', 'numbers',
-        'tags', 'momenta', 'masses',
+        'tags', 'masses',
         'magmoms', 'charges',
-        'scaled_positions',
-        'cell', 'pbc',
-        'constraint', 'calculator',
         'info',
         ]:
         if k in d:

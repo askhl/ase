@@ -25,8 +25,10 @@ Experimental ionization potentials are from http://srdata.nist.gov/cccbdb/.
 For details about G2-1 and G2-2 sets see doi:10.1063/1.477422.
 """
 
-from ase.data.g2_1 import data
+from ase.data.g2_1 import data as data_g2_1
 from ase.data.g2_2 import data as data_g2_2
+
+data = data_g2_1.copy()
 
 data.update(data_g2_2)
 
