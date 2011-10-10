@@ -36,7 +36,7 @@ class ElectronicStructureCalculatorWrapper(CalculatorWrapper):
         calc.add_option('-k', '--monkhorst-pack',
                         help='Monkhorst-Pack sampling of BZ.  Example: ' +
                         '"4,4,4": 4x4x4 k-points, "4,4,4g": same set of ' +
-                        'k-points shited to include the Gamma point.')
+                        'k-points shifted to include the Gamma point.')
         calc.add_option('--k-point-density', type='float', default=3.0,
                         help='Density of k-points in Angstrom.')
         parser.add_option_group(calc)
