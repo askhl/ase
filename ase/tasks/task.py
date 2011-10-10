@@ -187,32 +187,32 @@ class Task:
         return parser
 
     def add_options(self, parser):
-        behavior = optparse.OptionGroup(parser, 'Behavior')
-        behavior.add_option('-t', '--tag',
+        general = optparse.OptionGroup(parser, 'General')
+        general.add_option('-t', '--tag',
                             help='String tag added to filenames.')
-        behavior.add_option('-M', '--magnetic-moment',
+        general.add_option('-M', '--magnetic-moment',
                             help='Magnetic moment(s).  ' +
                             'Use "-M 1" or "-M 2.3,-2.3".')
-        behavior.add_option('-G', '--gui', action='store_true',
+        general.add_option('-G', '--gui', action='store_true',
                             help="Pop up ASE's GUI.")
-        behavior.add_option('-s', '--write-summary', action='store_true',
+        general.add_option('-s', '--write-summary', action='store_true',
                             help='Write summary.')
-        behavior.add_option('--slice', metavar='start:stop:step',
+        general.add_option('--slice', metavar='start:stop:step',
                             help='Select subset of calculations using ' +
                             'Python slice syntax.  ' +
                             'Use "::2" to do every second calculation and ' +
                             '":-5" to do the last five.')
-        behavior.add_option('-w', '--write-to-file', metavar='FILENAME',
+        general.add_option('-w', '--write-to-file', metavar='FILENAME',
                             help='Write configuration to file.')
-        behavior.add_option('-i', '--interactive-python-session',
+        general.add_option('-i', '--interactive-python-session',
                             action='store_true',
                             help='Run calculation inside interactive Python ' +
                             'session.  A possible $PYTHONSTARTUP script ' +
                             'will be imported and the "atoms" variable ' +
                             'refers to the Atoms object.')
-        behavior.add_option('-l', '--use-lock-files', action='store_true',
+        general.add_option('-l', '--use-lock-files', action='store_true',
                             help='...')
-        parser.add_option_group(behavior)
+        parser.add_option_group(general)
         
         return parser
     

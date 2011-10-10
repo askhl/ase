@@ -4,6 +4,7 @@ http://www.abinit.org/
 """
 
 import os
+import optparse
 from glob import glob
 from os.path import join, isfile, islink
 
@@ -12,6 +13,7 @@ import numpy as np
 from ase.data import chemical_symbols
 from ase.data import atomic_numbers
 from ase.units import Bohr, Hartree
+from ase.tasks.calcwrapper import ElectronicStructureCalculatorWrapper
 
 
 class Abinit:
@@ -309,9 +311,6 @@ class Abinit:
 
         self.write_inp(atoms)
 
-        abinit = os.environ['ABINIT_SCRIPT']
-        locals = {'label': self.label}
-
         # Now, because (stupidly) abinit when it finds a name it uses nameA
         # and when nameA exists it uses nameB, etc.
         # we need to rename our *.txt file to *.txt.bak
@@ -319,8 +318,15 @@ class Abinit:
         if islink(filename) or isfile(filename):
             os.rename(filename, filename+'.bak')
 
-        execfile(abinit, {}, locals)
-        exitcode = locals['exitcode']
+        if 'ABINIT_SCRIPT' in os.environ:
+            abinit = os.environ['ABINIT_SCRIPT']
+            locals = {'label': self.label}
+            execfile(abinit, {}, locals)
+            exitcode = locals['exitcode']
+        else:
+            exitcode = os.system('/usr/bin/abinis < %s.files > %s.log' %
+                                 (self.label, self.label))
+
         if exitcode != 0:
             raise RuntimeError(('Abinit exited with exit code: %d.  ' +
                                 'Check %s.log for more information.') %
@@ -722,3 +728,28 @@ keys_with_units = {
 
 # shortcut function names
 Abinit.get_occupation_numbers = Abinit.get_occupations
+
+
+class AbinitWrapper(ElectronicStructureCalculatorWrapper):
+    def __init__(self, ecut=350.0, **kwargs):
+        self.ecut = ecut
+
+        ElectronicStructureCalculatorWrapper.__init__(self, 'Abinit', **kwargs)
+
+    def __call__(self, name, atoms):
+        kpts = self.calculate_kpts(atoms)
+        return Abinit(label=name, ecut=self.ecut, kpts=kpts, xc=self.xc,
+                      **self.kwargs)
+        
+    def add_options(self, parser):
+        ElectronicStructureCalculatorWrapper.add_options(self, parser)
+        
+        calc = optparse.OptionGroup(parser, 'Abinit')
+        calc.add_option('-E', '--plane-wave-cutoff', type=float, default=350.0,
+                        help='Plane wave cutoff energy in eV.')
+        parser.add_option_group(calc)
+
+    def parse(self, opts):
+        ElectronicStructureCalculatorWrapper.parse(self, opts)
+
+        self.ecut = opts.plane_wave_cutoff

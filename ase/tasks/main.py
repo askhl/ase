@@ -21,7 +21,7 @@ Try "ase mol --help" or "ase bulk --help".
 """ % (', '.join(calcnames[:-1]) + ' or ' + calcnames[-1])
 
 
-def run(args=sys.argv[1:]):
+def run(args=sys.argv[1:], calcname='emt'):
     if isinstance(args, str):
         args = args.split(' ')
 
@@ -34,7 +34,6 @@ def run(args=sys.argv[1:]):
         sys.stderr.write(usage)
         return
 
-    calcname = 'emt'
     if len(args) > 0:
         if args[0] in calcnames:
             calcname = args.pop(0)
