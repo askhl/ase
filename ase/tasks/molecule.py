@@ -119,7 +119,7 @@ class MoleculeTask(OptimizeTask):
                 hnu = units._hbar * 1e10 * sqrt(k / units._e / units._amu / m)
 
                 data['minimum energy'] = emin
-                self.results[name][1:] = [emin, dmin, 1000 * hnu]
+                self.results[name][1:] = [energies[2] - emin, dmin, 1000 * hnu]
             else:
                 self.results[name].extend([None, None])
 

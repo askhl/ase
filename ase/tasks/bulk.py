@@ -85,7 +85,8 @@ class BulkTask(OptimizeTask):
                 eos = EquationOfState(volumes, energies)
                 v, e, B = eos.fit()
 
-                self.results[name][1:] = [e, v, B * 1e24 / units.kJ]
+                self.results[name][1:] = [energies[2] - e, v,
+                                          B * 1e24 / units.kJ]
             else:
                 self.results[name].extend([None, None])
 
