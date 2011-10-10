@@ -1,0 +1,307 @@
+import sys
+import optparse
+import traceback
+from time import time
+
+import numpy as np
+
+from ase.io import string2index
+from ase.parallel import world
+from ase.utils import opencew, devnull, prnt
+from ase.tasks.io import JSONReader, JSONWriter
+from ase.visualize import view
+from ase.io import read, write
+from ase.constraints import FixAtoms
+from ase.optimize.lbfgs import LBFGS
+
+
+class Task:
+    def __init__(self, calcwrapper='emt',
+                 tag=None, magmoms=None, gui=False,
+                 write_summary=False, use_lock_files=False,
+                 write_to_file=None, slice=slice(None),
+                 logfile='-'):
+
+        if isinstance(calcwrapper, str):
+            calcwrapper = get_calculator_wrapper(calcwrapper)
+
+        self.calcwrapper = calcwrapper
+        self.tag = tag
+        self.magmoms = magmoms
+        self.gui = gui
+        self.write_summary = write_summary
+        self.write_to_file = write_to_file
+        self.slice = slice
+        
+        self.name = None
+        self.systems = {}
+
+        if world.rank == 0:
+            if logfile is None:
+                logfile = devnull
+            elif isinstance(logfile, str):
+                if logfile == '-':
+                    logfile = sys.stdout
+                else:
+                    logfile = open(logfile, 'w')
+        else:
+            logfile = devnull
+        self.logfile = logfile
+        
+        self.writers = [JSONWriter()]
+        self.reader = JSONReader()
+    
+        self.data = {}
+        self.taskname = 'generic-task'
+        self.results = {}
+
+        self.summary_header = [('name', ''), ('E', 'eV')]
+
+    def log(self, *args, **kwargs):
+        prnt(file=self.logfile, *args, **kwargs)
+
+    def get_filename(self, name=None, ext=''):
+        filename = self.taskname + '-' + self.calcwrapper.name.lower()
+        if self.tag:
+            filename += '-' + self.tag
+        if name:
+            filename = name + '-' + filename
+        return filename + ext
+
+    def run(self, names):
+        if isinstance(names, str):
+            names = [names]
+            
+        names = names[self.slice]
+
+        if self.gui:
+            for name in names:
+                view(self.create_system(name))
+            return
+        
+        if self.write_to_file:
+            if self.write_to_file[0] == '.':
+                for name in names:
+                    filename = self.get_filename(name, self.write_to_file)
+                    write(filename, self.create_system(name))
+            else:
+                assert len(names) == 1
+                write(self.write_to_file, self.create_system(names[0]))
+            return
+
+        if self.write_summary:
+            self.read(names)
+            self.analyse()
+            self.summarize()
+            return
+
+        atoms = None
+        for name in names:
+            if self.use_lock_files:
+                lockfilename = self.get_filename(name, '.lock')
+                fd = opencew(lockfilename)
+                if fd is None:
+                    self.log('Skipping', name)
+                    continue
+                fd.close()
+            atoms = self.run_single(name)
+        
+        return atoms
+
+    def run_single(self, name):
+        atoms = self.create_system(name)
+        atoms.calc = self.calcwrapper(self.get_filename(name), atoms)
+
+        tstart = time()
+
+        try:
+            data = self.calculate(name, atoms)
+        except KeyboardInterrupt:
+            raise
+        except Exception:
+            traceback.print_exc(file=self.logfile)
+            data = {}
+
+        tstop = time()
+        data['time'] = tstop - tstart
+
+        for writer in self.writers:
+            filenamebase = self.get_filename(name)
+            writer.write(filenamebase, atoms, data)
+        
+        self.data[name] = data
+
+        return atoms
+
+    def create_system(self, name):
+        if name in self.systems:
+            system = self.systems[name]
+        elif '.' in name:
+            system = read(name)
+        else:
+            system = self.build_system(name)
+
+        if self.magmoms is not None:
+            system.set_initial_magnetic_moments(
+                np.tile(self.magmoms, len(system) // len(self.magmoms)))
+
+        return system
+
+    def calculate(self, name, atoms):
+        e = atoms.get_potential_energy()
+        f = atoms.get_forces()
+        return {'energy': e, 'forces':f}
+
+    def read(self, names):
+        self.data = {}
+        for name in names:
+            filenamebase = self.get_filename(name)
+            self.data[name] = self.reader.read(filenamebase)
+
+    def analyse(self):
+        for name, data in self.data.items():
+            self.results[name] = [data['energy']]
+
+    def summarize(self):
+        self.log(' '.join('%10s' % x[0] for x in self.summary_header))
+        self.log(' '.join('%10s' % x[1] for x in self.summary_header))
+        for name, data in self.results.items():
+            s = '%10s' % name
+            for x in data:
+                if x is None:
+                    s += '           '
+                else:
+                    s += '%11.3f' % x
+            self.log(s)
+
+    def create_parser(self):
+        calcname = self.calcwrapper.name
+        description = ('Run %s calculation for simple atoms, molecules or ' +
+                       'bulk systems.') % calcname
+        epilog = ''
+        parser = optparse.OptionParser(
+            usage='%prog [options] formula or filename',
+            version='%prog 0.1',
+            description=description + ' ' + epilog)
+        self.add_options(parser)
+        return parser
+
+    def add_options(self, parser):
+        behavior = optparse.OptionGroup(parser, 'Behavior')
+        behavior.add_option('-t', '--tag',
+                            help='String tag added to filenames.')
+        behavior.add_option('-M', '--magnetic-moment',
+                            help='Magnetic moment(s).  ' +
+                            'Use "-M 1" or "-M 2.3,-2.3".')
+        behavior.add_option('-G', '--gui', action='store_true',
+                            help="Pop up ASE's GUI.")
+        behavior.add_option('-s', '--write-summary', action='store_true',
+                            help='Write summary.')
+        behavior.add_option('--slice', metavar='start:stop:step',
+                            help='Select subset of calculations using ' +
+                            'Python slice syntax.  ' +
+                            'Use "::2" to do every second calculation and ' +
+                            '":-5" to do the last five.')
+        behavior.add_option('-w', '--write-to-file', metavar='FILENAME',
+                            help='Write configuration to file.')
+        behavior.add_option('-i', '--interactive-python-session',
+                            action='store_true',
+                            help='Run calculation inside interactive Python ' +
+                            'session.  A possible $PYTHONSTARTUP script ' +
+                            'will be imported and the "atoms" variable ' +
+                            'refers to the Atoms object.')
+        behavior.add_option('-l', '--use-lock-files', action='store_true',
+                            help='...')
+        parser.add_option_group(behavior)
+        
+        return parser
+    
+    def parse(self, parser, args):
+        opts, args = parser.parse_args(args)
+
+        if opts.tag:
+            self.tag = opts.tag
+            
+        if opts.magnetic_moment:
+            self.magmoms = np.array([float(m)
+                                     for m in opts.magnetic_moment.split(',')])
+        
+        self.gui = opts.gui
+        self.write_summary = opts.write_summary
+        self.write_to_file = opts.write_to_file
+        self.use_lock_files = opts.use_lock_files
+
+        if opts.slice:
+            self.slice = string2index(opts.slice)
+
+        if len(args) == 0:
+            parser.error('incorrect number of arguments')
+
+        return opts, args
+
+
+class OptimizeTask(Task):
+    def __init__(self, fmax=0.05, constrain_tags=[], **kwargs):
+        self.fmax = fmax
+        self.constrain_tags = constrain_tags
+
+        Task.__init__(self, **kwargs)
+        
+        self.taskname = 'opt'
+
+        self.summary_header.append(('E-E0', 'eV'))
+
+    def optimize(self, name, atoms):
+        mask = [t in self.constrain_tags for t in atoms.get_tags()]
+        if mask:
+            constrain = FixAtoms(mask=mask)
+            atoms.constraints = [constrain]
+
+        optimizer = LBFGS(atoms, trajectory=self.get_filename(name, '.traj'),
+                          logfile=None)
+        optimizer.run(self.fmax)
+        
+    def calculate(self, name, atoms):
+        data = Task.calculate(self, name, atoms)
+
+        if self.fmax is not None:
+            self.optimize(name, atoms)
+
+            data['minimum energy'] = atoms.get_potential_energy()
+            data['minimum forces'] = atoms.get_forces()
+        
+        return data
+
+    def analyse(self):
+        Task.analyse(self)
+        for name, data in self.data.items():
+            if 'minimum energy' in data:
+                self.results[name].append(data['energy'] - 
+                                          data['minimum energy'])
+            else:
+                self.results[name].append(None)
+
+    def add_options(self, parser):
+        Task.add_options(self, parser)
+
+        optimize = optparse.OptionGroup(parser, 'Optimize')
+        optimize.add_option('-R', '--relax', type='float', metavar='FMAX',
+                            help='Relax internal coordinates using L-BFGS '
+                            'algorithm.')
+        optimize.add_option('--constrain-tags', type='str',
+                            metavar='T1,T2,...',
+                            help='Constrain atoms with tags T1, T2, ...')
+        parser.add_option_group(optimize)
+        
+        return parser
+
+    def parse(self, parser, args):
+        opts, args = Task.parse(self, parser, args)
+
+        self.fmax = opts.relax
+
+        if opts.constrain_tags:
+            self.constrain_tags = [int(t)
+                                   for t in opts.constrain_tags.split(',')]
+
+        return opts, args
