@@ -9,34 +9,36 @@ from ase.tasks.bulk import BulkTask
 
 
 usage = """\
-Usage: ase [task] [calculator] [options] system(s)
+Usage: ase [calculator] [task] [options] system(s)
 
-task:       mol(ecule), bulk or the name of Python script that instantiates
-            a Task object.
-calculator: %s.
+calculator: %s.  Default value is emt.
+task:       molecule, bulk or the name of Python script that instantiates
+            a Task object.  Default value is molecule.
 systems:    chemical formulas or filenames of files containing the atomic
             structure.
 
-Try "ase mol --help" or "ase bulk --help".
+Try "ase molecule --help" or "ase bulk --help".
 """ % (', '.join(calcnames[:-1]) + ' or ' + calcnames[-1])
 
 
 def run(args=sys.argv[1:], calcname='emt'):
+
     if isinstance(args, str):
         args = args.split(' ')
 
     argsoriginal = args[:]
 
+    if len(args) > 0 and args[0] in calcnames:
+        calcname = args.pop(0)
+
+    taskname = 'molecule'
     if (len(args) > 0 and
-        (args[0] in ['mol', 'molecule', 'bulk'] or args[0].endswith('.py'))):
+        (args[0] in ['molecule', 'bulk'] or args[0].endswith('.py'))):
         taskname = args.pop(0)
-    else:
+
+    if len(args) == 0:
         sys.stderr.write(usage)
         return
-
-    if len(args) > 0:
-        if args[0] in calcnames:
-            calcname = args.pop(0)
     
     calcwrapper = get_calculator_wrapper(calcname)
     

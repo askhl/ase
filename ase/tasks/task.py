@@ -68,9 +68,27 @@ class Task:
             filename = name + '-' + filename
         return filename + ext
 
-    def run(self, names):
+    def expand_names(self, names):
         if isinstance(names, str):
             names = [names]
+            
+        newnames = []
+        for name in names:
+            if '-' in name:
+                Z1, Z2 = name.split('-')
+                if Z1 == '':
+                    Z1 = 'H'
+                if Z2 == '':
+                    Z2 = 'U'
+                newnames.extend(chemical_symbols[
+                        atomic_numbers[Z1]:atomic_numbers[Z2]])
+            else:
+                newnames.append(name)
+
+        return newnames
+
+    def run(self, names):
+        names = self.expand(names)
             
         names = names[self.slice]
 

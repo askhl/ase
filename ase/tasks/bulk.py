@@ -95,7 +95,7 @@ class BulkTask(OptimizeTask):
 
         bulk = optparse.OptionGroup(parser, 'Bulk')
         bulk.add_option('-F', '--fit', action='store_true',
-                        help='Find optimal volume or bondlength.')
+                        help='Find optimal volume.')
         bulk.add_option('-x', '--crystal-structure',
                         help='Crystal structure.',
                         choices=['sc', 'fcc', 'bcc', 'diamond', 'hcp',
