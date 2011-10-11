@@ -141,8 +141,9 @@ class Task:
         except KeyboardInterrupt:
             raise
         except Exception:
+            self.log(name, 'FAILED')
             traceback.print_exc(file=self.logfile)
-            data = {}
+            return
 
         tstop = time()
         data['time'] = tstop - tstart
