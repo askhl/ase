@@ -168,7 +168,7 @@ class Task:
     def calculate(self, name, atoms):
         e = atoms.get_potential_energy()
         f = atoms.get_forces()
-        return {'energy': e, 'forces':f}
+        return {'energy': e, 'forces': f}
 
     def read(self, names):
         self.data = {}
@@ -302,7 +302,7 @@ class OptimizeTask(Task):
         Task.analyse(self)
         for name, data in self.data.items():
             if 'minimum energy' in data:
-                self.results[name].append(data['energy'] - 
+                self.results[name].append(data['energy'] -
                                           data['minimum energy'])
             else:
                 self.results[name].append(None)
