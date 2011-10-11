@@ -80,8 +80,12 @@ class Task:
         for name in names:
             if '-' in name:
                 s1, s2 = name.split('-')
-                newnames.extend(chemical_symbols[
-                        atomic_numbers[s1]:atomic_numbers[s2] + 1])
+                Z1 = atomic_numbers.get(s1)
+                Z2 = atomic_numbers.get(s2)
+                if Z1 is None or Z2 is None:
+                    newnames.append(name)
+                else:
+                    newnames.extend(chemical_symbols[Z1:Z2 + 1])
             else:
                 newnames.append(name)
 
