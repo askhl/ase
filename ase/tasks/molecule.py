@@ -13,10 +13,11 @@ import ase.units as units
 
 
 class MoleculeTask(OptimizeTask):
-    def __init__(self, vacuum=3.0, atomize=False,
+    def __init__(self, vacuum=3.0, cell=None, atomize=False,
                  bond_length=None, fit=False,
                  **kwargs):
         self.vacuum = vacuum
+        self.unit_cell = cell
         self.atomize = atomize
         self.bond_length = bond_length
         self.fit = fit
@@ -65,7 +66,13 @@ class MoleculeTask(OptimizeTask):
                                                (b, 0, 0)])
             else:
                 raise ValueError('Unknown molecule: ' + name)
-        atoms.center(vacuum=self.vacuum)
+
+        if self.unit_cell is None:
+            atoms.center(vacuum=self.vacuum)
+        else:
+            atoms.cell = self.unit_cell
+            atoms.center()
+
         return atoms
     
     def fit_bond_length(self, name, atoms):
@@ -151,6 +158,9 @@ class MoleculeTask(OptimizeTask):
         mol.add_option('-v', '--vacuum', type='float', default=3.0,
                        help='Amount of vacuum to add around isolated systems '
                        '(in Angstrom).')
+        mol.add_option('--unit-cell',
+                       help='Unit cell.  Examples: "10.0" or "9,10,11" ' +
+                       '(in Angstrom).')
         mol.add_option('--bond-length', type='float',
                        help='Bond length of dimer in Angstrom.')
         mol.add_option('-F', '--fit', action='store_true',
@@ -159,18 +169,20 @@ class MoleculeTask(OptimizeTask):
         mol.add_option('--atomize', action='store_true',
                        help='Calculate Atomization energies.')
         parser.add_option_group(mol)
-        
-        return parser
 
-    def parse(self, parser, args):
-        opts, args = OptimizeTask.parse(self, parser, args)
+    def parse(self, opts, args):
+        OptimizeTask.parse(self, opts, args)
 
         self.vacuum = opts.vacuum
         self.bond_length = opts.bond_length
         self.fit = opts.fit
         self.atomize = opts.atomize
 
-        return opts, args
+        if opts.unit_cell:
+            if ',' in opts.unit_cell:
+                self.unit_cell = [float(x) for x in opts.unit_cell.split(',')]
+            else:
+                self.unit_cell = [float(opts.unit_cell)] * 3
 
     def check_occupation_numbers(self, config):
         """Check that occupation numbers are integers."""

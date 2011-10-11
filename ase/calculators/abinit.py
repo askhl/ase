@@ -749,7 +749,7 @@ class AbinitWrapper(ElectronicStructureCalculatorWrapper):
                         help='Plane wave cutoff energy in eV.')
         parser.add_option_group(calc)
 
-    def parse(self, opts):
-        ElectronicStructureCalculatorWrapper.parse(self, opts)
+    def parse(self, opts, args):
+        ElectronicStructureCalculatorWrapper.parse(self, opts, args)
 
         self.ecut = opts.plane_wave_cutoff

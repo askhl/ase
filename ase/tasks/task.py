@@ -5,14 +5,16 @@ from time import time
 
 import numpy as np
 
-from ase.io import string2index
 from ase.parallel import world
-from ase.utils import opencew, devnull, prnt
-from ase.tasks.io import JSONReader, JSONWriter
 from ase.visualize import view
 from ase.io import read, write
+from ase.io import string2index
 from ase.constraints import FixAtoms
 from ase.optimize.lbfgs import LBFGS
+from ase.utils import opencew, devnull, prnt
+from ase.tasks.io import JSONReader, JSONWriter
+from ase.data import chemical_symbols, atomic_numbers
+from ase.tasks.calcwrapper import get_calculator_wrapper
 
 
 class Task:
@@ -32,7 +34,7 @@ class Task:
         self.write_summary = write_summary
         self.write_to_file = write_to_file
         self.slice = slice
-        
+
         self.name = None
         self.systems = {}
 
@@ -57,6 +59,8 @@ class Task:
 
         self.summary_header = [('name', ''), ('E', 'eV')]
 
+        self.interactive_python_session = False
+
     def log(self, *args, **kwargs):
         prnt(file=self.logfile, *args, **kwargs)
 
@@ -68,20 +72,16 @@ class Task:
             filename = name + '-' + filename
         return filename + ext
 
-    def expand_names(self, names):
+    def expand(self, names):
         if isinstance(names, str):
             names = [names]
             
         newnames = []
         for name in names:
             if '-' in name:
-                Z1, Z2 = name.split('-')
-                if Z1 == '':
-                    Z1 = 'H'
-                if Z2 == '':
-                    Z2 = 'U'
+                s1, s2 = name.split('-')
                 newnames.extend(chemical_symbols[
-                        atomic_numbers[Z1]:atomic_numbers[Z2]])
+                        atomic_numbers[s1]:atomic_numbers[s2] + 1])
             else:
                 newnames.append(name)
 
@@ -231,31 +231,39 @@ class Task:
         general.add_option('-l', '--use-lock-files', action='store_true',
                             help='...')
         parser.add_option_group(general)
-        
-        return parser
     
-    def parse(self, parser, args):
+    def parse_args(self, args=None):
+        if args is None:
+            args = sys.argv[1:]
+
+        parser = self.create_parser()
+        self.calcwrapper.add_options(parser)
         opts, args = parser.parse_args(args)
 
+        if len(args) == 0:
+            parser.error('incorrect number of arguments')
+
+        self.parse(opts, args)
+        self.calcwrapper.parse(opts, args)
+
+        return args
+
+    def parse(self, opts, args):
         if opts.tag:
             self.tag = opts.tag
             
         if opts.magnetic_moment:
-            self.magmoms = np.array([float(m)
-                                     for m in opts.magnetic_moment.split(',')])
+            self.magmoms = np.array(
+                [float(m) for m in opts.magnetic_moment.split(',')])
         
         self.gui = opts.gui
         self.write_summary = opts.write_summary
         self.write_to_file = opts.write_to_file
         self.use_lock_files = opts.use_lock_files
+        self.interactive_python_session = opts.interactive_python_session
 
         if opts.slice:
             self.slice = string2index(opts.slice)
-
-        if len(args) == 0:
-            parser.error('incorrect number of arguments')
-
-        return opts, args
 
 
 class OptimizeTask(Task):
@@ -310,16 +318,12 @@ class OptimizeTask(Task):
                             metavar='T1,T2,...',
                             help='Constrain atoms with tags T1, T2, ...')
         parser.add_option_group(optimize)
-        
-        return parser
 
-    def parse(self, parser, args):
-        opts, args = Task.parse(self, parser, args)
+    def parse(self, opts, args):
+        Task.parse(self, opts, args)
 
         self.fmax = opts.relax
 
         if opts.constrain_tags:
             self.constrain_tags = [int(t)
                                    for t in opts.constrain_tags.split(',')]
-
-        return opts, args

@@ -13,7 +13,7 @@ class CalculatorWrapper:
     def add_options(self, parser):
         pass
 
-    def parse(self, opts):
+    def parse(self, opts, args):
         pass
 
     def __call__(self, name, atoms):
@@ -41,7 +41,7 @@ class ElectronicStructureCalculatorWrapper(CalculatorWrapper):
                         help='Density of k-points in Angstrom.')
         parser.add_option_group(calc)
 
-    def parse(self, opts):
+    def parse(self, opts, args):
         self.xc = opts.xc
         
         mp = opts.monkhorst_pack

@@ -3,7 +3,7 @@ import sys
 import tempfile
 import traceback
 
-from ase.tasks.calcwrapper import calcnames, get_calculator_wrapper
+from ase.tasks.calcwrapper import calcnames
 from ase.tasks.molecule import MoleculeTask
 from ase.tasks.bulk import BulkTask
 
@@ -40,8 +40,6 @@ def run(args=sys.argv[1:], calcname='emt'):
         sys.stderr.write(usage)
         return
     
-    calcwrapper = get_calculator_wrapper(calcname)
-    
     if taskname.endswith('.py'):
         locals = {}
         execfile(taskname, {}, locals)
@@ -49,16 +47,13 @@ def run(args=sys.argv[1:], calcname='emt'):
         assert len(tasks) == 1
         task = tasks[0]
     elif taskname == 'bulk':
-        task = BulkTask(calcwrapper=calcwrapper)
+        task = BulkTask(calcwrapper=calcname)
     else:
-        task = MoleculeTask(calcwrapper=calcwrapper)
+        task = MoleculeTask(calcwrapper=calcname)
 
-    parser = task.create_parser()
-    calcwrapper.add_options(parser)
-    opts, args = task.parse(parser, args)
-    calcwrapper.parse(opts)
+    args = task.parse_args(args)
 
-    if opts.interactive_python_session:
+    if task.interactive_python_session:
         if '-i' in argsoriginal:
             argsoriginal.remove('-i')
         if '--interactive-python-session' in argsoriginal:

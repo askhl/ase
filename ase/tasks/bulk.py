@@ -111,11 +111,9 @@ class BulkTask(OptimizeTask):
         bulk.add_option('-r', '--repeat',
                         help='Repeat unit cell.  Use "-r 2" or "-r 2,3,1".')
         parser.add_option_group(bulk)
-        
-        return parser
 
-    def parse(self, parser, args):
-        opts, args = OptimizeTask.parse(self, parser, args)
+    def parse(self, opts, args):
+        OptimizeTask.parse(self, opts, args)
 
         self.fit = opts.fit
         self.crystal_structure = opts.crystal_structure
@@ -124,5 +122,3 @@ class BulkTask(OptimizeTask):
         self.orthorhombic = opts.orthorhombic
         self.cubic = opts.cubic
         self.repeat = opts.repeat
-
-        return opts, args
