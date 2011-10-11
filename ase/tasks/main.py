@@ -76,7 +76,7 @@ def run(args=sys.argv[1:], calcname='emt'):
 def main():
     try:
         run()
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, SystemExit):
         raise
     except Exception:
         traceback.print_exc()
