@@ -179,7 +179,11 @@ class Task:
         self.data = {}
         for name in names:
             filenamebase = self.get_filename(name)
-            self.data[name] = self.reader.read(filenamebase)
+            try:
+                data = self.reader.read(filenamebase)
+            except IOError:
+                continue
+            self.data[name] = data
 
     def analyse(self):
         for name, data in self.data.items():
