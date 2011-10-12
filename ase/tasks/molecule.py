@@ -35,7 +35,9 @@ class MoleculeTask(OptimizeTask):
         names = []
         for name in names1:
             if name.lower() == 'g2-1':
-                names.extend(['N2', 'H2O'])
+                #names.extend(['N2', 'H2O'])
+                from ase.data.molecules import g1
+                names.extend(g1)
             else:
                 names.append(name)
 
@@ -48,13 +50,13 @@ class MoleculeTask(OptimizeTask):
         return OptimizeTask.run(self, names)
 
     def build_system(self, name):
-        symbols = string2symbols(name)
         try:
             # Molecule or atom?
             atoms = molecule(name)
             if len(atoms) == 2 and self.bond_length is not None:
                 atoms.set_distance(0, 1, self.bond_length)
         except NotImplementedError:
+            symbols = string2symbols(name)
             if len(symbols) == 2:
                 # Dimer
                 if self.bond_length is None:
