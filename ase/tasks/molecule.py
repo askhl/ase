@@ -57,7 +57,9 @@ class MoleculeTask(OptimizeTask):
                 atoms.set_distance(0, 1, self.bond_length)
         except NotImplementedError:
             symbols = string2symbols(name)
-            if len(symbols) == 2:
+            if len(symbols) == 1:
+                atoms = Atoms(name) # , magmoms=[])  XXX
+            elif len(symbols) == 2:
                 # Dimer
                 if self.bond_length is None:
                     b = (covalent_radii[atomic_numbers[symbols[0]]] +

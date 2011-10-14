@@ -42,17 +42,15 @@ def numpyfy(obj):
     return obj
 
 
-class JSONWriter:
-    def write(self, name, atoms, results):
-        if world.rank == 0:
-            fd = open(name + '.json', 'w')
-            fd.write(dumps(results))
-            fd.close()
-
-
-class JSONReader:
-    def read(self, name):
-        fd = open(name + '.json', 'r')
-        results = loads(fd.read())
+def write_json(name, atoms, results):
+    if world.rank == 0:
+        fd = open(name + '.json', 'w')
+        fd.write(dumps(results))
         fd.close()
-        return numpyfy(results)
+
+
+def read_json(name):
+    fd = open(name + '.json', 'r')
+    results = loads(fd.read())
+    fd.close()
+    return numpyfy(results)

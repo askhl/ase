@@ -3,7 +3,7 @@ import sys
 import tempfile
 import traceback
 
-from ase.tasks.calcwrapper import calcnames
+from ase.tasks.calcfactory import calcnames
 from ase.tasks.molecule import MoleculeTask
 from ase.tasks.bulk import BulkTask
 
@@ -47,9 +47,9 @@ def run(args=sys.argv[1:], calcname='emt'):
         assert len(tasks) == 1
         task = tasks[0]
     elif taskname == 'bulk':
-        task = BulkTask(calcwrapper=calcname)
+        task = BulkTask(calcfactory=calcname)
     else:
-        task = MoleculeTask(calcwrapper=calcname)
+        task = MoleculeTask(calcfactory=calcname)
 
     args = task.parse_args(args)
 

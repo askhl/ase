@@ -12,22 +12,22 @@ from ase.io import string2index
 from ase.constraints import FixAtoms
 from ase.optimize.lbfgs import LBFGS
 from ase.utils import opencew, devnull, prnt
-from ase.tasks.io import JSONReader, JSONWriter
+from ase.tasks.io import read_json, write_json
 from ase.data import chemical_symbols, atomic_numbers
-from ase.tasks.calcwrapper import get_calculator_wrapper
+from ase.tasks.calcfactory import calculator_factory
 
 
 class Task:
-    def __init__(self, calcwrapper='emt',
+    def __init__(self, calcfactory='emt',
                  tag=None, magmoms=None, gui=False,
                  write_summary=False, use_lock_files=False,
                  write_to_file=None, slice=slice(None),
                  logfile='-'):
 
-        if isinstance(calcwrapper, str):
-            calcwrapper = get_calculator_wrapper(calcwrapper)
+        if isinstance(calcfactory, str):
+            calcfactory = calculator_factory(calcfactory)
 
-        self.calcwrapper = calcwrapper
+        self.calcfactory = calcfactory
         self.tag = tag
         self.magmoms = magmoms
         self.gui = gui
@@ -50,8 +50,8 @@ class Task:
             logfile = devnull
         self.logfile = logfile
         
-        self.writers = [JSONWriter()]
-        self.reader = JSONReader()
+        self.write_funcs = [write_json]
+        self.read_func = read_json
     
         self.data = {}
         self.taskname = 'generic-task'
@@ -65,7 +65,7 @@ class Task:
         prnt(file=self.logfile, *args, **kwargs)
 
     def get_filename(self, name=None, ext=''):
-        filename = self.taskname + '-' + self.calcwrapper.name.lower()
+        filename = self.taskname + '-' + self.calcfactory.name.lower()
         if self.tag:
             filename += '-' + self.tag
         if name:
@@ -132,7 +132,7 @@ class Task:
 
     def run_single(self, name):
         atoms = self.create_system(name)
-        atoms.calc = self.calcwrapper(self.get_filename(name), atoms)
+        atoms.calc = self.calcfactory(self.get_filename(name), atoms)
 
         tstart = time()
 
@@ -148,9 +148,9 @@ class Task:
         tstop = time()
         data['time'] = tstop - tstart
 
-        for writer in self.writers:
+        for write in self.write_funcs:
             filenamebase = self.get_filename(name)
-            writer.write(filenamebase, atoms, data)
+            write(filenamebase, atoms, data)
         
         self.data[name] = data
 
@@ -180,7 +180,7 @@ class Task:
         for name in names:
             filenamebase = self.get_filename(name)
             try:
-                data = self.reader.read(filenamebase)
+                data = self.read_func(filenamebase)
             except IOError:
                 continue
             self.data[name] = data
@@ -202,7 +202,7 @@ class Task:
             self.log(s)
 
     def create_parser(self):
-        calcname = self.calcwrapper.name
+        calcname = self.calcfactory.name
         description = ('Run %s calculation for simple atoms, molecules or ' +
                        'bulk systems.') % calcname
         epilog = ''
@@ -246,14 +246,14 @@ class Task:
             args = sys.argv[1:]
 
         parser = self.create_parser()
-        self.calcwrapper.add_options(parser)
+        self.calcfactory.add_options(parser)
         opts, args = parser.parse_args(args)
 
         if len(args) == 0:
             parser.error('incorrect number of arguments')
 
         self.parse(opts, args)
-        self.calcwrapper.parse(opts, args)
+        self.calcfactory.parse(opts, args)
 
         return args
 

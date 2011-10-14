@@ -728,28 +728,3 @@ keys_with_units = {
 
 # shortcut function names
 Abinit.get_occupation_numbers = Abinit.get_occupations
-
-
-class AbinitWrapper(ElectronicStructureCalculatorWrapper):
-    def __init__(self, ecut=350.0, **kwargs):
-        self.ecut = ecut
-
-        ElectronicStructureCalculatorWrapper.__init__(self, 'Abinit', **kwargs)
-
-    def __call__(self, name, atoms):
-        kpts = self.calculate_kpts(atoms)
-        return Abinit(label=name, ecut=self.ecut, kpts=kpts, xc=self.xc,
-                      **self.kwargs)
-        
-    def add_options(self, parser):
-        ElectronicStructureCalculatorWrapper.add_options(self, parser)
-        
-        calc = optparse.OptionGroup(parser, 'Abinit')
-        calc.add_option('-E', '--plane-wave-cutoff', type=float, default=350.0,
-                        help='Plane wave cutoff energy in eV.')
-        parser.add_option_group(calc)
-
-    def parse(self, opts, args):
-        ElectronicStructureCalculatorWrapper.parse(self, opts, args)
-
-        self.ecut = opts.plane_wave_cutoff
