@@ -18,16 +18,16 @@ from ase.tasks.calcfactory import calculator_factory
 
 
 class Task:
+    taskname = 'generic-task'
+
     def __init__(self, calcfactory='emt',
                  tag=None, magmoms=None, gui=False,
                  write_summary=False, use_lock_files=False,
                  write_to_file=None, slice=slice(None),
                  logfile='-'):
 
-        if isinstance(calcfactory, str):
-            calcfactory = calculator_factory(calcfactory)
+        self.set_calculator_factory(calcfactory)
 
-        self.calcfactory = calcfactory
         self.tag = tag
         self.magmoms = magmoms
         self.gui = gui
@@ -54,13 +54,18 @@ class Task:
         self.read_func = read_json
     
         self.data = {}
-        self.taskname = 'generic-task'
         self.results = {}
 
         self.summary_header = [('name', ''), ('E', 'eV')]
 
         self.interactive_python_session = False
 
+    def set_calculator_factory(self, calcfactory):
+        if isinstance(calcfactory, str):
+            calcfactory = calculator_factory(calcfactory)
+
+        self.calcfactory = calcfactory
+        
     def log(self, *args, **kwargs):
         prnt(file=self.logfile, *args, **kwargs)
 
@@ -276,14 +281,14 @@ class Task:
 
 
 class OptimizeTask(Task):
+    taskname = 'opt'
+
     def __init__(self, fmax=0.05, constrain_tags=[], **kwargs):
         self.fmax = fmax
         self.constrain_tags = constrain_tags
 
         Task.__init__(self, **kwargs)
         
-        self.taskname = 'opt'
-
         self.summary_header.append(('E-E0', 'eV'))
 
     def optimize(self, name, atoms):

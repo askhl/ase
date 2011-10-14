@@ -11,6 +11,8 @@ import ase.units as units
 
 
 class BulkTask(OptimizeTask):
+    taskname = 'bulk'
+
     def __init__(self, crystal_structure=None, lattice_constant=None,
                  c_over_a=None, cubic=False, orthorhombic=False, fit=False,
                  **kwargs):
@@ -23,8 +25,6 @@ class BulkTask(OptimizeTask):
 
         OptimizeTask.__init__(self, **kwargs)
         
-        self.taskname = 'bulk'
-
         self.summary_header += [('V0', 'Ang^3'),
                                 ('B', 'GPa')]
 

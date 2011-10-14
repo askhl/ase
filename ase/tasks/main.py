@@ -3,9 +3,10 @@ import sys
 import tempfile
 import traceback
 
-from ase.tasks.calcfactory import calcnames
-from ase.tasks.molecule import MoleculeTask
+from ase.tasks.task import Task
 from ase.tasks.bulk import BulkTask
+from ase.tasks.molecule import MoleculeTask
+from ase.tasks.calcfactory import calcnames
 
 
 usage = """\
@@ -42,14 +43,16 @@ def run(args=sys.argv[1:], calcname='emt'):
     
     if taskname.endswith('.py'):
         locals = {}
-        execfile(taskname, {}, locals)
-        tasks = [task for task in locals.values()]
+        execfile(taskname, locals, locals)
+        tasks = [task for task in locals.values() if isinstance(task, Task)]
         assert len(tasks) == 1
         task = tasks[0]
     elif taskname == 'bulk':
-        task = BulkTask(calcfactory=calcname)
+        task = BulkTask()
     else:
-        task = MoleculeTask(calcfactory=calcname)
+        task = MoleculeTask()
+
+    task.set_calculator_factory(calcname)
 
     args = task.parse_args(args)
 

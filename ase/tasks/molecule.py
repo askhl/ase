@@ -13,6 +13,8 @@ import ase.units as units
 
 
 class MoleculeTask(OptimizeTask):
+    taskname = 'molecule'
+        
     def __init__(self, vacuum=3.0, cell=None, atomize=False,
                  bond_length=None, fit=False,
                  **kwargs):
@@ -23,8 +25,6 @@ class MoleculeTask(OptimizeTask):
         self.fit = fit
         
         OptimizeTask.__init__(self, **kwargs)
-        
-        self.taskname = 'molecule'
         
         self.summary_header += [('d0', 'Ang'),
                                 ('hnu', 'meV'),
@@ -142,7 +142,7 @@ class MoleculeTask(OptimizeTask):
             
             eatoms = 0.0
             for symbol in atoms.get_chemical_symbols():
-                if symbol in self.data:
+                if symbol in self.data and symbol != name:
                     eatoms += self.data[symbol]['energy']
                 else:
                     eatoms = None
