@@ -125,7 +125,7 @@ class Task:
         atoms = None
         for name in names:
             if self.use_lock_files:
-                lockfilename = self.get_filename(name, '.lock')
+                lockfilename = self.get_filename(name, '.json')
                 fd = opencew(lockfilename)
                 if fd is None:
                     self.log('Skipping', name)
@@ -223,6 +223,7 @@ class Task:
         general.add_option('-t', '--tag',
                             help='String tag added to filenames.')
         general.add_option('-M', '--magnetic-moment',
+                           metavar='M1,M2,...'
                             help='Magnetic moment(s).  ' +
                             'Use "-M 1" or "-M 2.3,-2.3".')
         general.add_option('-G', '--gui', action='store_true',
@@ -243,7 +244,8 @@ class Task:
                             'will be imported and the "atoms" variable ' +
                             'refers to the Atoms object.')
         general.add_option('-l', '--use-lock-files', action='store_true',
-                            help='...')
+                            help='Skip calculations where the json ' +
+                           'lock-file or result file already exists.')
         parser.add_option_group(general)
     
     def parse_args(self, args=None):

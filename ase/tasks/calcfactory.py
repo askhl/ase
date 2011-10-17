@@ -59,13 +59,15 @@ class CalculatorFactory:
     def add_options(self, parser):
         calc = optparse.OptionGroup(parser, 'Calculator')
         calc.add_option('-k', '--monkhorst-pack',
+                        metavar='K1,K2,K3',
                         help='Monkhorst-Pack sampling of BZ.  Example: ' +
                         '"4,4,4": 4x4x4 k-points, "4,4,4g": same set of ' +
                         'k-points shifted to include the Gamma point.')
         calc.add_option('--k-point-density', type='float', default=3.0,
                         help='Density of k-points in Angstrom.')
         calc.add_option('-p', '--parameters', metavar='key=value,...',
-                        help='Comma-separated key=value pairs.')
+                        help='Comma-separated key=value pairs of ' +
+                        'calculator specific parameters.')
         parser.add_option_group(calc)
 
     def parse(self, opts, args):
