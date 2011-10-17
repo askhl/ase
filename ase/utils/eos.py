@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
-from math import sqrt
 
 import numpy as np
-
-from ase.units import kJ
 
 class EquationOfState:
     """Fit equation of state for bulk systems.
 
     The following equation is used::
 
-                          2      3        -1/3
-      E(V) = c + c t + c t  + c t ,  t = V
-              0   1     2      3
+       A third order polynomial fit
+
+                           2      3        -1/3
+       E(V) = c + c t + c t  + c t ,  t = V
+               0   1     2      3
+
+    More methods available in ase.utils.oldeos
 
     Use::
 
@@ -24,6 +25,8 @@ class EquationOfState:
     def __init__(self, volumes, energies):
         self.v = np.array(volumes)
         self.e = np.array(energies)
+        self.eos_string = 'poly'
+
         self.v0 = None
 
     def fit(self):
@@ -35,9 +38,9 @@ class EquationOfState:
 
           v0, e0, B = eos.fit()
           print B / kJ * 1.0e24, 'GPa'
-          
+
         """
-        
+
         fit0 = np.poly1d(np.polyfit(self.v**-(1.0 / 3), self.e, 3))
         fit1 = np.polyder(fit0, 1)
         fit2 = np.polyder(fit1, 1)
@@ -50,11 +53,11 @@ class EquationOfState:
 
         if self.v0 is None:
             raise ValueError('No minimum!')
-        
+
         self.e0 = fit0(t)
         self.B = t**5 * fit2(t) / 9
         self.fit0 = fit0
-        
+
         return self.v0, self.e0, self.B
 
     def plot(self, filename=None, show=None):
@@ -63,13 +66,13 @@ class EquationOfState:
         Uses Matplotlib to plot the energy curve.  Use *show=True* to
         show the figure and *filename='abc.png'* or
         *filename='abc.eps'* to save the figure to a file."""
-        
+
         #import matplotlib.pyplot as plt
         import pylab as plt
 
         if self.v0 is None:
             self.fit()
-            
+
         if filename is None and show is None:
             show = True
 
@@ -78,11 +81,12 @@ class EquationOfState:
         f.subplots_adjust(left=0.12, right=0.9, top=0.9, bottom=0.15)
         plt.plot(self.v, self.e, 'o')
         x = np.linspace(min(self.v), max(self.v), 100)
-        plt.plot(x, self.fit0(x**-(1.0 / 3)), '-r')
+        y = self.fit0(x**-(1.0 / 3))
+        plt.plot(x, y, '-r')
         plt.xlabel(u'volume [Å^3]')
         plt.ylabel(u'energy [eV]')
-        plt.title(u'E: %.3f eV, V: %.3f Å^3, B: %.3f GPa' %
-                  (self.e0, self.v0, self.B / kJ * 1.0e24))
+        plt.title(u'%s: E: %.3f eV, V: %.3f Å^3, B: %.3e eV/Å^3' %
+                  (self.eos_string, self.e0, self.v0, self.B))
 
         if show:
             plt.show()
