@@ -18,6 +18,11 @@ class MoleculeTask(OptimizeTask):
     def __init__(self, vacuum=3.0, cell=None, atomize=False,
                  bond_length=None, fit=False,
                  **kwargs):
+        """Molecule task.
+
+        This task can calculate bond lengths and vibration frequencies
+        of dimer molecules."""
+
         self.vacuum = vacuum
         self.unit_cell = cell
         self.atomize = atomize
@@ -35,7 +40,6 @@ class MoleculeTask(OptimizeTask):
         names = []
         for name in names1:
             if name.lower() == 'g2-1':
-                #names.extend(['N2', 'H2O'])
                 from ase.data.molecules import g1
                 names.extend(g1)
             else:
@@ -51,7 +55,7 @@ class MoleculeTask(OptimizeTask):
 
     def build_system(self, name):
         try:
-            # Molecule or atom?
+            # Known molecule or atom?
             atoms = molecule(name)
             if len(atoms) == 2 and self.bond_length is not None:
                 atoms.set_distance(0, 1, self.bond_length)

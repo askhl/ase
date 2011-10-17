@@ -26,6 +26,18 @@ class Task:
                  write_to_file=None, slice=slice(None),
                  logfile='-'):
 
+        """Generic task object.
+
+        This task will do a single of the energy and forces for the
+        configurations that subcalsses define in their build_system()
+        methods.
+
+        calcfactory: CalculatorFactory object or str
+            A calculator factory or the name of a calculator.
+
+        For the meaning of the other arguments, see the add_options()
+        and parse_args() methods."""
+
         self.set_calculator_factory(calcfactory)
 
         self.tag = tag
@@ -34,9 +46,6 @@ class Task:
         self.write_summary = write_summary
         self.write_to_file = write_to_file
         self.slice = slice
-
-        self.name = None
-        self.systems = {}
 
         if world.rank == 0:
             if logfile is None:
@@ -53,8 +62,8 @@ class Task:
         self.write_funcs = [write_json]
         self.read_func = read_json
     
-        self.data = {}
-        self.results = {}
+        self.data = {}  # data read from json files
+        self.results = {}  # results from analysis of json files
 
         self.summary_header = [('name', ''), ('E', 'eV')]
 
@@ -78,6 +87,7 @@ class Task:
         return filename + ext
 
     def expand(self, names):
+        """Expand ranges like H-Li to H, He, Li."""
         if isinstance(names, str):
             names = [names]
             
@@ -97,6 +107,16 @@ class Task:
         return newnames
 
     def run(self, names):
+        """Run task far all names.
+
+        The task will be one of these four:
+
+        * Open ASE's GUI
+        * Write configuration to file
+        * Write summary
+        * Do the actual calculation
+        """
+
         names = self.expand(names)
             
         names = names[self.slice]
@@ -157,14 +177,10 @@ class Task:
             filenamebase = self.get_filename(name)
             write(filenamebase, atoms, data)
         
-        self.data[name] = data
-
         return atoms
 
     def create_system(self, name):
-        if name in self.systems:
-            system = self.systems[name]
-        elif '.' in name:
+        if '.' in name:
             system = read(name)
         else:
             system = self.build_system(name)
@@ -223,9 +239,9 @@ class Task:
         general.add_option('-t', '--tag',
                             help='String tag added to filenames.')
         general.add_option('-M', '--magnetic-moment',
-                           metavar='M1,M2,...'
-                            help='Magnetic moment(s).  ' +
-                            'Use "-M 1" or "-M 2.3,-2.3".')
+                           metavar='M1,M2,...',
+                           help='Magnetic moment(s).  ' +
+                           'Use "-M 1" or "-M 2.3,-2.3".')
         general.add_option('-G', '--gui', action='store_true',
                             help="Pop up ASE's GUI.")
         general.add_option('-s', '--write-summary', action='store_true',

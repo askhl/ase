@@ -16,6 +16,8 @@ class BulkTask(OptimizeTask):
     def __init__(self, crystal_structure=None, lattice_constant=None,
                  c_over_a=None, cubic=False, orthorhombic=False, fit=False,
                  **kwargs):
+        """Bulk task."""
+
         self.crystal_structure = crystal_structure
         self.lattice_constant = lattice_constant
         self.c_over_a = c_over_a
@@ -27,16 +29,6 @@ class BulkTask(OptimizeTask):
         
         self.summary_header += [('V0', 'Ang^3'),
                                 ('B', 'GPa')]
-
-    def run(self, names1):
-        names = []
-        for name in names1:
-            if name.lower() == '3d':
-                names.extend(chemical_symbols[28:30])
-            else:
-                names.append(name)
-
-        return OptimizeTask.run(self, names)
 
     def build_system(self, name):
         atoms = bulk(name, crystalstructure=self.crystal_structure,

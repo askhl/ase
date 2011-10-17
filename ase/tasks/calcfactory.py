@@ -5,6 +5,14 @@ import numpy as np
 
 
 def str2dict(s, namespace={}):
+    """Convert comma-separated key=vale string to dictionary.
+
+    Example:
+
+    >>> str2dict('a=1.2,b=True,c=abc,d=1,2,3')
+    {'a': 1.2, 'c': 'abc', 'b': True, 'd': (1, 2, 3)}
+    """
+
     dct = {}
     s = (s + ',').split('=')
     for i in range(len(s) - 1):
@@ -24,6 +32,10 @@ class CalculatorFactory:
     def __init__(self, Class, name, label='label',
                  kpts=None, kptdensity=3.0,
                  **kwargs):
+        """Calculator factory object.
+
+        Used to create calculators with specific parameters."""
+
         self.Class = Class
         self.name = name
         self.label = label
@@ -32,9 +44,13 @@ class CalculatorFactory:
         self.kwargs = kwargs
 
     def calculate_kpts(self, atoms):
+        """Estimate an appropriate number of k-points."""
+
         if self.kpts is not None:
+            # Number of k-points was explicitely set:
             return self.kpts
         
+        # Use kptdensity to make a good estimate:
         recipcell = atoms.get_reciprocal_cell()
         kpts = []
         for i in range(3):
@@ -47,6 +63,10 @@ class CalculatorFactory:
         return kpts
 
     def __call__(self, name, atoms):
+        """Create calculator.
+        
+        Put name in the filename of all created files."""
+
         kpts = self.calculate_kpts(atoms)
         if kpts != 'no k-points':
             self.kwargs['kpts'] = kpts
@@ -87,27 +107,38 @@ class CalculatorFactory:
 
 
 # Recognized names of calculators sorted alphabetically:
-calcnames = ['abinit', 'emt', 'gpaw', 'nwchem', 'vasp']
+calcnames = ['abinit', 'aims', 'castep', 'dftb', 'elk', 'emt', 'exciting',
+             'fleur', 'gpaw', 'lammps', 'lj', 'morse', 'nwchem', 'siesta',
+             'turbomole', 'vasp']
+
+classnames = {'elk': 'ELK',
+              'emt': 'EMT',
+              'fleur': 'FLEUR',
+              'lammps': 'LAMMPS',
+              'lj': 'LennardJones',
+              'morse': 'MorsePotential',
+              'nwchem': 'NWchem'}
 
 
 def calculator_factory(name, **kwargs):
+    """Create an ASE calculator factory."""
+
     if name == 'gpaw':
         from gpaw.factory import GPAWFactory
         return GPAWFactory(**kwargs)
 
-    classname = {'emt': 'EMT', 'nwchem': 'NWchem'}.get(name, name.title())
+    classname = classnames.get(name, name.title())
     module = __import__('ase.calculators.' + name, fromlist=[classname])
     Class = getattr(module, classname)
 
-    if name in ['emt']:
+    if name in ['emt', 'lammps', 'lj', 'morse']:
         kpts = 'no k-points'
     else:
         kpts = None
 
-    if name in ['emt']:
+    if name in ['emt', 'lj', 'morse']:
         label = None
     else:
         label = 'label'
 
     return CalculatorFactory(Class, classname, label, kpts, **kwargs)
-
