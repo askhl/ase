@@ -2,6 +2,8 @@
 
 .. highlight:: bash
 
+.. index:: ase
+
 ==================
 Command line tools
 ==================
@@ -214,3 +216,17 @@ See `convergence.py`_.
 
 .. _convergence.py: https://trac.fysik.dtu.dk/projects/gpaw/browser/trunk/gpaw/
                     tasks/convergence.py
+
+
+To be done
+==========
+
+* Optimize c/a ratio.
+* Write summary in correct order.
+* Write results to file (pickl, csv, ...).
+* Split off EnergyTast from Task.
+* Fix usage text.
+* Set correct magnetic moments for atoms.
+* Remove --version option.
+* Add --exclude option.
+* Implement --fit=5,0.01 option.
