@@ -55,6 +55,7 @@ class PickleTrajectory:
             Use backup=False to disable renaming of an existing file.
         """
 
+        self.offsets = []
         self.numbers = None
         self.pbc = None
         self.sanitycheck = True
@@ -63,47 +64,70 @@ class PickleTrajectory:
         self.write_counter = 0    # Counter used to determine when callbacks
                                   # are called
 
-        self.offsets = []
         if master is None:
             master = (rank == 0)
         self.master = master
         self.backup = backup
+        self.seekable = False
+
+        if isinstance(filename, PickleTrajectory):
+            self.parent_obj = filename
+            self.parent_map = mode
+            self.mode = 'r'
+        else:
+            self.parent_obj = None
+            self.parent_map = None
+            self.open(filename, mode)
         self.set_atoms(atoms)
-        self.open(filename, mode)
 
     def open(self, filename, mode):
         """Opens the file.
 
         For internal use only.
         """
-        self.fd = filename
-        if mode == 'r':
-            if isinstance(filename, str):
+        if mode not in ['r', 'w', 'a']:
+            raise ValueError('mode must be "r", "w" or "a".')
+        self.mode = mode
+
+        # Open the file-object
+        exists = True
+        if isinstance(filename, str):
+            if mode == 'r':
                 self.fd = open(filename, 'rb')
-            self.read_header()
-        elif mode == 'a':
-            exists = True
-            if isinstance(filename, str):
+            elif mode == 'a':
                 exists = os.path.isfile(filename)
-                if exists:
-                    self.fd = open(filename, 'rb')
-                    self.read_header()
-                    self.fd.close()
-                barrier()
                 if self.master:
                     self.fd = open(filename, 'ab+')
                 else:
-                    self.fd = devnull
-        elif mode == 'w':
-            if self.master:
-                if isinstance(filename, str):
+                    self.fd = open(filename, 'rb')
+            elif mode == 'w':
+                if self.master:
                     if self.backup and os.path.isfile(filename):
                         os.rename(filename, filename + '.bak')
                     self.fd = open(filename, 'wb')
-            else:
-                self.fd = devnull
+                else:
+                    self.fd = open('/dev/null', 'w')
         else:
-            raise ValueError('mode must be "r", "w" or "a".')
+            self.fd = filename
+
+        # Check if the file-object is seekable
+        try:
+            self.fd.seek(0)
+        except IOError:
+            self.seekable = False
+        else:
+            self.seekable = True
+
+        if not self.seekable:
+            if mode == 'a':
+                raise ValueError('Cannot open a none-seekable file-' +
+                                 'object, e.g. a pipe, in "a"-mode')
+            if not self.master:
+                raise ValueError('Cannot open a none-seekable file-' +
+                                 'object, e.g. a pipe, in parallel')
+
+        if mode in ['r', 'a'] and exists:
+            self.read_header()
 
     def set_atoms(self, atoms=None):
         """Associate an Atoms object with the trajectory.
@@ -115,7 +139,6 @@ class PickleTrajectory:
         self.atoms = atoms
 
     def read_header(self):
-        self.fd.seek(0)
         try:
             if self.fd.read(len('PickleTrajectory')) != 'PickleTrajectory':
                 raise IOError('This is not a trajectory file!')
@@ -123,12 +146,16 @@ class PickleTrajectory:
         except EOFError:
             raise EOFError('Bad trajectory file.')
 
+        if self.seekable:
+            self.offsets.append(self.fd.tell())
+        else:
+            self.offsets.append(0)
+
         self.pbc = d['pbc']
         self.numbers = d['numbers']
         self.tags = d.get('tags')
         self.masses = d.get('masses')
         self.constraints = dict2constraints(d)
-        self.offsets.append(self.fd.tell())
 
     def write(self, atoms=None):
         """Write the atoms to the file.
@@ -136,6 +163,9 @@ class PickleTrajectory:
         If the atoms argument is not given, the atoms object specified
         when creating the trajectory object is used.
         """
+        if self.mode not in ['w', 'a']:
+            raise IOError('Can only write in "w"- or "a"-mode.')
+
         self._call_observers(self.pre_observers)
         if atoms is None:
             atoms = self.atoms
@@ -174,12 +204,14 @@ class PickleTrajectory:
         if atoms.get_calculator() is not None:
             if self.write_energy:
                 d['energy'] = atoms.get_potential_energy()
+
             if self.write_forces:
                 assert self.write_energy
                 try:
                     d['forces'] = atoms.get_forces(apply_constraint=False)
                 except NotImplementedError:
                     pass
+
             if self.write_stress:
                 assert self.write_energy
                 try:
@@ -201,9 +233,15 @@ class PickleTrajectory:
             d['info'] = stringnify_info(atoms.info)
             
         if self.master:
+            if self.seekable:
+                self.fd.seek(0, 2)
             pickle.dump(d, self.fd, protocol=-1)
-        self.fd.flush()
-        self.offsets.append(self.fd.tell())
+            if self.seekable:
+                self.offsets.append(self.fd.tell())
+            else:
+                self.offsets.append(0)
+            self.fd.flush()
+
         self._call_observers(self.post_observers)
         self.write_counter += 1
 
@@ -225,8 +263,11 @@ class PickleTrajectory:
              'constraints': [],  # backwards compatibility
              'constraints_string': pickle.dumps(atoms.constraints)}
         pickle.dump(d, self.fd, protocol=-1)
-        self.header_written = True
-        self.offsets.append(self.fd.tell())
+        if self.seekable:
+            self.offsets.append(self.fd.tell())
+        else:
+            self.offsets.append(0)
+        self.fd.flush()
 
         # Atomic numbers and periodic boundary conditions are only
         # written once - in the header.  Store them here so that we can
@@ -237,106 +278,139 @@ class PickleTrajectory:
     def close(self):
         """Close the trajectory file."""
         self.fd.close()
+        self.mode = None
 
     def __getitem__(self, i=-1):
+        if self.mode not in ['r', 'a']:
+            raise IOError('Can only read in "r"- or "a"-mode')
+
         if isinstance(i, slice):
-            return [self[j] for j in range(*i.indices(len(self)))]
+            if not self.seekable and self.parent_obj is None:
+                raise IOError('Cannot make a slice, when the file-' +
+                              'object is none-seekable, e.g. a pipe')
+            else:
+                return PickleTrajectory(self, range(*i.indices(len(self))))
+        elif isinstance(i, int):
+            if self.parent_obj is not None:
+                return self.parent_obj[self.parent_map[i]]
 
-        N = len(self.offsets)
-        if 0 <= i < N:
-            self.fd.seek(self.offsets[i])
-            try:
-                d = pickle.load(self.fd)
-            except EOFError:
-                raise IndexError
-            if i == N - 1:
+            if self.seekable:
+                if i < 0:
+                    i = len(self) + i
+
+                N = len(self.offsets)
+                if 0 <= i < N:
+                    self.fd.seek(self.offsets[i])
+                    if i == N - 1:
+                        return self.load_atoms(True)
+                    else:
+                        return self.load_atoms()
+                elif i >= N and i < len(self):
+                    self.fd.seek(self.offsets[i])
+                    return self.load_atoms()
+                else:
+                    raise IndexError('Index out of range')
+            else:
+                if i >= len(self.offsets) - 1:
+                    while len(self.offsets) <= i + 1:
+                        atoms = self.load_atoms(True)
+                    return atoms
+                else:
+                    raise IndexError('Index out of range')
+        else:
+            raise TypeError('Indices must be integers')
+
+    def load_atoms(self, tell=False):
+        try:
+            d = pickle.load(self.fd)
+        except EOFError:
+            raise IndexError('Index out of range')
+        except:
+            raise IOError('Bad image in trajectory')
+
+        if tell:
+            if self.seekable:
                 self.offsets.append(self.fd.tell())
-            try:
-                magmoms = d['magmoms']
-            except KeyError:
-                magmoms = None
-            atoms = Atoms(positions=d['positions'],
-                          numbers=self.numbers,
-                          cell=d['cell'],
-                          momenta=d['momenta'],
-                          magmoms=magmoms,
-                          tags=self.tags,
-                          masses=self.masses,
-                          pbc=self.pbc,
-                          info=unstringnify_info(d.get('info', {})),
-                          constraint=[c.copy() for c in self.constraints])
-            if 'energy' in d:
-                calc = SinglePointCalculator(
-                    d.get('energy', None), d.get('forces', None),
-                    d.get('stress', None), magmoms, atoms)
-                atoms.set_calculator(calc)
-            return atoms
+            else:
+                self.offsets.append(0)
 
-        if i >= N:
-            for j in range(N - 1, i + 1):
-                atoms = self[j]
-            return atoms
+        atoms = Atoms(positions=d['positions'],
+                      numbers=self.numbers,
+                      cell=d['cell'],
+                      momenta=d['momenta'],
+                      magmoms=d.get('magmoms'),
+                      tags=self.tags,
+                      masses=self.masses,
+                      pbc=self.pbc,
+                      info=unstringnify_info(d.get('info', {})),
+                      constraint=[c.copy() for c in self.constraints])
 
-        i = len(self) + i
-        if i < 0:
-            raise IndexError('Trajectory index out of range.')
-        return self[i]
+        if 'energy' in d:
+            calc = SinglePointCalculator(d.get('energy'),
+                                         d.get('forces'),
+                                         d.get('stress'),
+                                         d.get('magmoms'),
+                                         atoms)
+            atoms.set_calculator(calc)
+
+        return atoms
 
     def __len__(self):
-        if len(self.offsets) == 0:
-            return 0
-        N = len(self.offsets) - 1
-        while True:
-            self.fd.seek(self.offsets[N])
-            try:
-                pickle.load(self.fd)
-            except EOFError:
-                return N
-            self.offsets.append(self.fd.tell())
-            N += 1
+        if self.parent_obj is not None:
+            return len(self.parent_map)
+        else:
+            if self.seekable:
+                self.seek_offsets()
+                return len(self.offsets) - 1
+            else:
+                return 0
 
     def __iter__(self):
-        del self.offsets[1:]
+        self.iter_index = -1
         return self
 
     def next(self):
+        self.iter_index += 1
         try:
-            return self[len(self.offsets) - 1]
+            return self[self.iter_index]
         except IndexError:
             raise StopIteration
 
-    def guess_offsets(self):
-        size = os.path.getsize(self.fd.name)
+    def seek_offsets(self):
+        self.fd.seek(0, 2) # To the end of the file
+        size = self.fd.tell()
+        offsets = self.offsets[:1]
 
-        while True:
-            self.fd.seek(self.offsets[-1])
+        while offsets[-1] < size:
+            self.fd.seek(offsets[-1])
             try:
                 pickle.load(self.fd)
             except:
-                raise EOFError('Damaged trajectory file.')
+                raise IOError('Damaged trajectory file.')
             else:
-                self.offsets.append(self.fd.tell())
+                offsets.append(self.fd.tell())
+                #print "Now at: %i (%i)" % (offsets[-1], len(offsets))
 
-            if self.offsets[-1] >= size:
-                break
+            if len(offsets) > 2:
+                step = offsets[-1] - offsets[-2]
+                if step != offsets[-2] - offsets[-3]:
+                    mul = int((size - offsets[-1]) / step)
 
-            if len(self.offsets) > 2:
-                step1 = self.offsets[-1] - self.offsets[-2]
-                step2 = self.offsets[-2] - self.offsets[-3]
-
-                if step1 == step2:
-                    m = int((size - self.offsets[-1]) / step1) - 1
-
-                    while m > 1:
-                        self.fd.seek(self.offsets[-1] + m * step1)
+                    while mul > 2:
+                        off = [offsets[-1] + i * step for i in range(1, mul)]
                         try:
-                            pickle.load(self.fd)
+                            for i in [-1, -2, -mul / 2]:
+                                self.fd.seek(off[i])
+                                pickle.load(self.fd)
                         except:
-                            m = m / 2
+                            mul = mul / 2
                         else:
-                            for i in range(m):
-                                self.offsets.append(self.offsets[-1] + step1)
-                            m = 0
+                            #print "Multiplier: %i x %i = %i" % (mul, step, offsets[-1])
+                            offsets += off[:]
+                            break
+        self.offsets = offsets
+    
+    guess_offsets = seek_offsets
 
     def pre_write_attach(self, function, interval=1, *args, **kwargs):
         """Attach a function to be called before writing begins.

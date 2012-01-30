@@ -26,6 +26,7 @@ for a in t:
     print 2, a.positions[-1,2]
 assert len(t) == 7
 
+# Change of atomic numbers and pbc not allowed
 co[0].number = 1
 try:
     t.write(co)
@@ -43,6 +44,7 @@ except ValueError:
 else:
     assert False
 
+# Change of number of atoms not allowed
 co.pbc = False
 o = co.pop(1)
 try:
@@ -55,11 +57,43 @@ else:
 co.append(o)
 t.write(co)
 
-# append to a nonexisting file
+# Append to a nonexisting file
 fname = '2.traj'
 if os.path.isfile(fname):
     os.remove(fname)
-t = PickleTrajectory(fname, 'a', co)
-del t
+traj = PickleTrajectory(fname, 'a', co)
+traj.write()
+del traj
 os.remove(fname)
+
+# Check offsets with changing image byte-size
+traj = PickleTrajectory('1.traj', 'a')
+co = traj[0]
+co.set_momenta([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
+for i in range(20):
+    co[1].x += 0.05
+    co[1].y += 0.05
+    co[1].z += 0.05
+    traj.write(co)
+del co.arrays['momenta']
+for i in range(20):
+    co[1].x += 0.05
+    co[1].y += 0.05
+    co[1].z += 0.05
+    traj.write(co)
+del traj
+traj = PickleTrajectory('1.traj', 'a')
+for a in traj:
+    print a[0].z
+
+# Check slicing of trajectory
+traj1 = traj[10:]
+traj2 = traj1[10:]
+assert(traj[35] == traj1[25])
+assert(traj[35] == traj2[15])
+
+# Check the length
+assert(len(traj) == 48)
+assert(len(traj1) == 38)
+assert(len(traj2) == 28)
 
