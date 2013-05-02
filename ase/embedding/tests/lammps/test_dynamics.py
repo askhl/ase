@@ -1,0 +1,30 @@
+from ase.atoms import Atoms
+from ase.embedding.multiase.lammps.reaxff import ReaxFF
+from ase.embedding.multiase.lammps.compass import COMPASS
+from ase.embedding.multiase.lammps.dynamics import LAMMPSOptimizer, LAMMPS_NVT
+from ase.embedding.multiase.utils import get_datafile
+from ase.data import s22
+from ase import units
+import numpy as np
+import ase.io
+from ase.io.trajectory import PickleTrajectory
+
+atoms = s22.create_s22_system('Methane_dimer')
+atoms.center(vacuum=10.0)
+print atoms.positions
+
+atoms.calc = COMPASS(ff_file_path=get_datafile('compass.frc'), debug=True)
+optimizer = LAMMPSOptimizer(atoms)
+optimizer.run()
+print atoms.positions
+
+atoms.calc = ReaxFF(ff_file_path=get_datafile('ffield.reax'), debug=True)
+dyn = LAMMPS_NVT(atoms, 1*units.fs, 100, trajectory='test.traj', traj_interval = 2)
+dyn.run(5)
+
+atoms.calc = COMPASS(ff_file_path=get_datafile('compass.frc'), debug=True)
+dyn.run(10)
+
+trj = PickleTrajectory('test.traj', 'r')
+
+for t in trj: print t.positions
