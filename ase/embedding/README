@@ -15,9 +15,9 @@ Description of directory structure
 
 ::
 
-  multiase/		- contains base class calculators
+  multiase/		- contains base calculators
   	lammps/		- modified ASE lammps interface
-  	mixer/		- mixer calculator for combining gpaw and lammps
+  	mixer/		- base calculator for combining other ase calculators
 
   tests/		- test scripts
   scripts/		- various utility scripts
