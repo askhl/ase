@@ -400,7 +400,162 @@ def read_vasp_xdat(filename='XDATCAR', index=-1):
             atoms.set_constraint(constraints)
     return images
 
-def read_vasp_out(filename='OUTCAR',index = -1):
+def _order_of_appearance(f, search_for=[], breaker=None, chunk_size=32768):
+    """Find the order of appearance of the terms searched for.
+    The file pointer is *NOT* moved after using this function. 
+
+    Parameters:
+
+    f: file object
+    search_for: list of strings/bytes in whatever order that are searched for
+    breaker: stop the search after the current chunk
+    chunk_size: size of a chunk of data in bytes (Defaults: 32768)
+
+    Returns:
+
+    list: searched terms sorted in order of appearance
+    terms not encountered are removed
+    """
+    mxl = max(map(len, search_for))
+    if chunk_size < mxl:
+        raise ValueError("Don't choose chunk_size smaller than the search term")
+    idx = range(len(search_for))
+    origin = f.tell()
+    start = origin
+    out = [None]*len(search_for)
+    while None in out:
+        _data = f.read(chunk_size)
+        if not _data:
+            break
+        # zip is needed. izip is not [].remove-safe
+        for i, term in zip(idx, search_for):
+            try:
+                out[i] = (term, _data.index(term) + start)
+                search_for.remove(term)
+                idx.remove(i)
+            except ValueError:
+                pass
+        if breaker is not None:
+            try:
+                _data.index(breaker)
+                break
+            except ValueError:
+                pass
+        start += chunk_size - mxl + 1
+        f.seek(start)
+    f.seek(origin)
+    return [i[0] for i in sorted([i for i in out if i is not None], key=lambda el: el[1])]
+
+def _go_next(f, search_for="", chunk_size=32768):
+    """Find the next occurence of a string/bytes in a file.
+    The file pointer is *MOVED* to the location of the searched term.
+
+    Parameters:
+
+    f: file object
+    search_for: string/array of bytes to be searched for
+    chunk_size: size of a chunk of data in bytes (Defaults: 32768)
+
+    Returns:
+
+    None: if 'search_for' has not been found
+    Current pointer location: if 'search_for' has been found
+    """
+    ml = len(search_for)
+    if chunk_size < ml:
+        raise ValueError("Don't choose chunk_size smaller than the search term")
+    start = f.tell() + 1
+    f.seek(start)
+    while True:
+        # Get the data
+        _data = f.read(chunk_size)
+        if not _data:
+            return None
+        # Search for term
+        try:
+            _pos = _data.index(search_for)
+            f.seek(_pos + start)
+            return _pos + start
+        except ValueError:
+            pass
+        # +1 : avoid double counting: 
+        # "... seekable" --> "eekable ..."
+        # "... seekabl" --> "seekable ..."
+        start += chunk_size - ml + 1 
+        # Change the position for the next step
+        f.seek(start)
+
+def _count_and_go(f, search_for="", n=1, chunk_size=32768):
+    """Go to the nth occurence of the term searched for.
+    The file pointer is *MOVED* to the location of the searched term.
+
+    Parameters:
+
+    f: file object
+    search_for: string/array of bytes to be searched for
+    n: counter
+    chunk_size: size of a chunk of data in bytes (Defaults: 32768)
+
+    Returns:
+
+    None: if 'search_for' has not been found
+    Current pointer location: if 'search_for' has been found
+    """
+    ml = len(search_for)
+    if chunk_size < ml:
+        raise ValueError("Don't choose chunk_size smaller than the search term")
+    start = f.tell()
+    f.seek(start)
+    while n > 0:
+        # Get the data
+        _data = f.read(chunk_size)
+        if not _data:
+            return None
+        # Search for term
+        n -= _data.count(search_for)
+        if n > 0:
+            start += chunk_size - ml + 1
+        f.seek(start)
+    _offset = -1
+    for _ in xrange(abs(n)+1):
+        _offset = _data.index(search_for, _offset+1)
+    f.seek(start+_offset)
+    return start+_offset
+        
+def _count(f, search_for="", chunk_size=32768*4):
+    """Count the number of times the searched term appear in a file from 
+    current file pointer location to the end.
+    The file pointer is *NOT* moved to the location of the searched term.
+
+    Parameters:
+
+    f: file object
+    search_for: string/array of bytes to be searched for
+    chunk_size: size of a chunk of data in bytes (Defaults: 32768*4)
+
+    Returns:
+
+    Number of times 'search_for' have been counted
+    """
+    ml = len(search_for)
+    if chunk_size < ml:
+        raise ValueError("Don't choose chunk_size smaller than the search term")
+    origin = f.tell()
+    start = origin
+    f.seek(start)
+    _counter = 0
+    while True:
+        # Get the data
+        _data = f.read(chunk_size)
+        if not _data:
+            f.seek(origin)
+            return _counter
+        # Search for term
+        _counter += _data.count(search_for)
+        start += chunk_size - ml + 1
+        f.seek(start)
+
+def read_vasp_out(filename='OUTCAR', index=-1):
     """Import OUTCAR type file.
 
     Reads unitcell, atom positions, energies, and forces from the OUTCAR file
@@ -410,8 +565,54 @@ def read_vasp_out(filename='OUTCAR',index = -1):
     import numpy as np
     from ase.calculators.singlepoint import SinglePointCalculator
     from ase import Atoms, Atom
+    from itertools import chain, repeat, izip
+    
+    #1) Read contraints from CONTCAR/POSCAR if present
+    #2) Use the keys in 'parsing_dct' as search terms to 
+    # get the search terms ordering in the current OUTCAR
+    # (for instance, do we have Energy -> Position or
+    # Magnetization -> Position -> Energy or ...?)
+    #3) Use 'parsing_dct' to create a new list containing
+    # the ordered set of parsing functions ('step_func')
+    #4) Get information from the headers of the OUTCAR
+    # (atom names, multiplicity, unit cell)
+    #5) Get boundaries to allow negative index searches
+    #6) Create a list containing intialized "Atoms" objects
+    #7) Iterate over 'step_func' and update "Atoms"
+    
+    # The beginning of each loop is not reliably placed in the file
+    # (no contant offset unfortunately)
+    
+    # A couple of functions were created to allow fast reading/parsing
+    
+    
+    # Define parsing functions
+    def get_pos(f, atoms):
+        if _go_next(f, "POSITION          ") is not None:
+            _data = _get_nlines(f, natoms, skip=2).reshape(natoms, 6).astype(float)
+            atoms.set_positions(_data[:natoms, :3])
+            atoms.calc.forces = _data[:natoms, 3:]
+    def get_ene(f, atoms):
+        if _go_next(f, "FREE ENERGIE OF THE ION-ELECTRON SYSTEM") is not None:
+            _get_nlines(f, 0, skip=4)
+            # return energy
+            atoms.calc.energy = float(f.readline().split()[-1])
+    def get_mag(f, atoms):
+        if _go_next(f, "magnetization (x)") is not None:
+            _t = _get_nlines(f, natoms, skip=4)
+            atoms.calc.magmoms = _t.reshape(natoms, 6)[:,5].astype(float)
+    
+    # Define parsing functions in a dict:
+    parsing_dct = {
+           "POSITION          ": get_pos,
+           "FREE ENERGIE OF THE ION-ELECTRON SYSTEM": get_ene,
+           "magnetization (x)" : get_mag
+           }
+           
+    search_terms = list(parsing_dct.keys())
 
-    try:          # try to read constraints, first from CONTCAR, then from POSCAR
+    # Try to read constraints, first from CONTCAR, then from POSCAR
+    try:          
         constr = read_vasp('CONTCAR').constraints
     except:
         try:
@@ -423,88 +624,81 @@ def read_vasp_out(filename='OUTCAR',index = -1):
         f = open(filename)
     else: # Assume it's a file-like object
         f = filename
-    data    = f.readlines()
-    natoms  = 0
-    images  = []
-    atoms   = Atoms(pbc = True, constraint = constr)
-    energy  = 0
-    species = []
-    species_num = []
-    symbols = []
-    ecount = 0
-    poscount = 0
-    magnetization = []
-
-    for n,line in enumerate(data):
-        if 'POTCAR:' in line:
-            temp = line.split()[2]
-            for c in ['.','_','1']:
-                if c in temp:
-                    temp = temp[0:temp.find(c)]
-            species += [temp]
-        if 'ions per type' in line:
-            species = species[:len(species)/2]
-            temp = line.split()
-            for ispecies in range(len(species)):
-                species_num += [int(temp[ispecies+4])]
-                natoms += species_num[-1]
-                for iatom in range(species_num[-1]): symbols += [species[ispecies]]
-        if 'direct lattice vectors' in line:
-            cell = []
-            for i in range(3):
-                temp = data[n+1+i].split()
-                cell += [[float(temp[0]), float(temp[1]), float(temp[2])]]
-            atoms.set_cell(cell)
-        if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM' in line:
-            energy = float(data[n+4].split()[6])
-            if ecount < poscount:
-                # reset energy for LAST set of atoms, not current one - VASP 5.11? and up
-                images[-1].calc.energy = energy
-            ecount += 1
-        if 'magnetization (x)' in line:
-            magnetization = []
-            for i in range(natoms):
-                magnetization += [float(data[n + 4 + i].split()[4])]
-        if 'POSITION          ' in line:
-            forces = []
-            for iatom in range(natoms):
-                temp    = data[n+2+iatom].split()
-                atoms  += Atom(symbols[iatom],[float(temp[0]),float(temp[1]),float(temp[2])])
-                forces += [[float(temp[3]),float(temp[4]),float(temp[5])]]
-                atoms.set_calculator(SinglePointCalculator(energy,forces,None,None,atoms))
-            images += [atoms]
-            if len(magnetization) > 0:
-                images[-1].calc.magmoms = np.array(magnetization, float)
-            atoms = Atoms(pbc = True, constraint = constr)
-            poscount += 1
-
-
-    # return requested images, code borrowed from ase/io/trajectory.py
-    if isinstance(index, int):
-        return images[index]
-    else:
-        step = index.step or 1
-        if step > 0:
-            start = index.start or 0
-            if start < 0:
-                start += len(images)
-            stop = index.stop or len(images)
-            if stop < 0:
-                stop += len(images)
+        
+    step_func = [parsing_dct[key] for key in _order_of_appearance(f, search_for=search_terms, breaker="Iteration    2")]
+    
+    # Get the atom names
+    _pos = _go_next(f, "POTCAR:")
+    if _pos is not None:
+        line = f.readline()
+        counter = 0
+        while "POTCAR:" in f.readline():
+            counter +=1
+        f.seek(_pos)  
+        species = [f.readline().split()[2][:2] for i in repeat(None, counter)]
+        species = [i if i[-1] not in "_.1 " else i[0] for i in species]
+    
+    # Get the associated multiplicity
+    if _go_next(f, "ions per type =") is not None:
+        species_num = [int(i) for i in f.readline()[len("ions per type ="):].split()]
+        natoms = sum(species_num)
+    
+        # Construct the list of atom symbols 
+        symbols = list(
+           chain(*[[el[0]]*el[1] for el in zip(species, species_num)])
+               )
+    
+    # Get the unit cell
+    if _go_next(f, "direct lattice vectors") is not None:
+        cell = _get_nlines(f, 3, skip=1).reshape(3,6)[:3,:3].astype(float)
+    
+    # Get bounds
+    num_calc = _count(f, "POSITION      ")
+    
+    try:
+        # Steps are ignored for now
+        start = index.start or 0
+        stop = index.stop or num_calc
+    except AttributeError:
+        start = index
+        if start == -1:
+            stop = num_calc
         else:
-            if index.start is None:
-                start = len(images) - 1
-            else:
-                start = index.start
-                if start < 0:
-                    start += len(images)
-            if index.stop is None:
-                stop = -1
-            else:
-                stop = index.stop
-                if stop < 0:
-                    stop += len(images)
-        return [images[i] for i in range(start, stop, step)]
+            stop = start + 1
+    except TypeError:
+        start = 0
+        stop = num_calc
+        
+    if start < 0:
+        start += num_calc
+    if stop < 0:
+        stop += num_calc
+    
+    # No step for now...
+    l_slice = (stop-start)#//step == 1
+    
+    # Initialize the list of atoms. [].append() are expensive!
+    images = [Atoms(symbols=symbols, cell=cell, pbc=True, constraint=constr)
+              for i in repeat(None, l_slice)] 
+    
+    # Get started
+    if start < 9999:
+        _pos = _go_next(f, "Iteration%5d"%(start+1))
+    else:
+        # Then we got "Iteration ****(   1)" and can't use it
+        _pos = _count_and_go(f, "(   1)  -----", start+1)
+        
+    if _pos is None:
+        raise IndexError("Index %s do not exist (max: %s)"%(start, num_calc-1))
+    
+    for atoms in images:
+        atoms.set_calculator(SinglePointCalculator(None,None,None,None,atoms))
+        for function in step_func:
+            function(f, atoms)
+        
+        atoms.calc.atoms = atoms
+
+    return images
 
 def write_vasp(filename, atoms, label='', direct=False, sort=None, symbol_count = None, long_format=True, vasp5=False):
     """Method to write VASP position (POSCAR/CONTCAR) files.
@@ -535,6 +729,8 @@ def write_vasp(filename, atoms, label='', direct=False, sort=None, symbol_count 
         coord = atoms.get_scaled_positions()
     else:
         coord = atoms.get_positions()
+
+    velo = atoms.get_velocities()
 
     if atoms.constraints:
         sflags = np.zeros((len(atoms), 3), dtype=bool)
@@ -625,6 +821,12 @@ def write_vasp(filename, atoms, label='', direct=False, sort=None, symbol_count 
                     s = 'T'
                 f.write('%4s' % s)
         f.write('\n')
+
+    # Write velocities from atoms.get_velocities()
+    if velo is not None:
+        f.write(" \n")
+        np.savetxt(f, velo, fmt="%16.8e%16.8e%16.8e")
+        f.write(' \n')
 
     if type(filename) == str:
         f.close()
