@@ -149,7 +149,8 @@ def read_vasp(filename='CONTCAR'):
         ac_type = sdyn
         atoms_pos = \
             _get_nlines(f, tot_natoms).reshape(tot_natoms, 3).astype(float)
-        
+    
+    b_vel_ptr = f.tell()
     try:
         time_step = None
         ac_v_type = f.readline()
@@ -162,14 +163,9 @@ def read_vasp(filename='CONTCAR'):
             pass
     except ValueError: 
         velocities = None
+        f.seek(b_vel_ptr)
     
     ## Done with all reading
-    try:
-        f.close()
-    except AttributeError:
-        pass
-    finally:
-        del f
     
     # Check if coordinate sets are cartesian or direct
     is_cartesian = (ac_type[0].lower() in "ck")
@@ -215,9 +211,6 @@ def _get_pos_hdrs(f):
     from itertools import repeat, chain
     from numpy.linalg import det
     
-    # Headers are at the begining of the file
-    f.seek(0)
-
     # Assume line 1 gives atom types (VASP 4.x format, check for that later)
     atomtypes = f.readline().split()
 
