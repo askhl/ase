@@ -112,87 +112,166 @@ def read_vasp(filename='CONTCAR'):
     """Import POSCAR/CONTCAR type file.
 
     Reads unitcell, atom positions and constraints from the POSCAR/CONTCAR
-    file and tries to read atom types from POSCAR/CONTCAR header, if this fails
-    the atom types are read from OUTCAR or POTCAR file.
+    file and tries to read atom types from POSCAR/CONTCAR header, if this 
+    fails the atom types are read from OUTCAR or POTCAR file.
     """
  
     from ase import Atoms, Atom
     from ase.constraints import FixAtoms, FixScaled
     from ase.data import chemical_symbols
+    from itertools import repeat, chain
     import numpy as np
 
     # Open the file
     if isinstance(filename, str):
-        f = open(filename)
-    else: # Assume it's a file-like object
+        # Assume filename is the name of a file
+        f = open(filename, 'rb')
+    else:
+        # Falling back assuming filename is a file object
         f = filename
 
-    # The first line is in principle a comment line, however in VASP
-    # 4.x a common convention is to have it contain the atom symbols,
-    # eg. "Ag Ge" in the same order as later in the file (and POTCAR
-    # for the full vasp run). In the VASP 5.x format this information
-    # is found on the fifth line. Thus we save the first line and use
-    # it in case we later detect that we're reading a VASP 4.x format
-    # file.
-    line1 = f.readline()
+    ## Reading the file
+    basis_vectors, atom_symbols = _get_pos_hdrs(f)
+    tot_natoms = len(atom_symbols)
 
-    lattice_constant = float(f.readline().split()[0])
+    # Check if 'selective dynamics' is switched on
+    sdyn = f.readline()
+    has_selective_dynamics = (sdyn[0].lower() == "s")
 
-    # Now the lattice vectors
-    a = []
-    for ii in range(3):
-        s = f.readline().split()
-        floatvect = float(s[0]), float(s[1]), float(s[2])
-        a.append(floatvect)
-
-    basis_vectors = np.array(a) * lattice_constant
-
-    # Number of atoms. Again this must be in the same order as
-    # in the first line
-    # or in the POTCAR or OUTCAR file
-    atom_symbols = []
-    numofatoms = f.readline().split()
-    # Check whether we have a VASP 4.x or 5.x format file. If the
-    # format is 5.x, use the fifth line to provide information about
-    # the atomic symbols.
-    vasp5 = False
+    if has_selective_dynamics:
+        ac_type = f.readline()
+        _data = _get_nlines(f, tot_natoms).reshape(tot_natoms, 6)
+        atoms_pos = _data[0:tot_natoms, 0:3].astype(float)
+        # 'F': Fixed and 'T': Free
+        # selective_flags: True if coordinate is FIXED ("F")
+        selective_flags = (_data[0:tot_natoms, 3:6] == "F")
+    else:
+        ac_type = sdyn
+        atoms_pos = \
+            _get_nlines(f, tot_natoms).reshape(tot_natoms, 3).astype(float)
+        
     try:
-        int(numofatoms[0])
-    except ValueError:
-        vasp5 = True
-        atomtypes = numofatoms
-        numofatoms = f.readline().split()
+        time_step = None
+        ac_v_type = f.readline()
+        # VASP velocities are A/fs, while ASE want m/s
+        velocities = \
+    _get_nlines(f, tot_natoms).reshape(tot_natoms, 3).astype(float)
+        try:
+            time_step = float(_get_nlines(f, 1, skip=2)[0])
+        except (ValueError, IndexError):
+            pass
+    except ValueError: 
+        velocities = None
+    
+    ## Done with all reading
+    try:
+        f.close()
+    except AttributeError:
+        pass
+    finally:
+        del f
+    
+    # Check if coordinate sets are cartesian or direct
+    is_cartesian = (ac_type[0].lower() in "ck")
+  
+    # Create the Atoms object, set positions and velocities
+    atoms = Atoms(symbols = atom_symbols, cell = basis_vectors, pbc = True)
+    if is_cartesian:
+        atoms.set_positions(atoms_pos*scaling_factor)
+    else:
+        atoms.set_scaled_positions(atoms_pos)
+    del atoms_pos
+    if velocities is not None:
+        # "Cartesian" is default if nothing is given
+        is_v_direct = (ac_v_type[0].lower() in "d")
+        if is_v_direct:
+            # Transform to Cartesian and scale (vectors/time_step -> A/fs)
+            atoms.set_velocities(velocities.dot(basis_vectors)/time_step)
+        else:
+            atoms.set_velocities(velocities)
+    
+    atoms.info["time_step"] = time_step or 1
 
-    # check for comments in numofatoms line and get rid of them if necessary
-    commentcheck = np.array(['!' in s for s in numofatoms])
-    if commentcheck.any():
-        # only keep the elements up to the first including a '!':
-        numofatoms = numofatoms[:np.arange(len(numofatoms))[commentcheck][0]]
+    
+    if has_selective_dynamics:
+        constraints = []
+        indices = []
 
-    if not vasp5:
-        atomtypes = line1.split()
-       
+        for ind, sflags in enumerate(selective_flags):
+            if sflags.any() and not sflags.all():
+                constraints.append(FixScaled(atoms.get_cell(), ind, sflags))
+            elif sflags.all():
+                indices.append(ind)
+        if indices:
+            constraints.append(FixAtoms(indices))
+        if constraints:
+            atoms.set_constraint(constraints)
+    return atoms
+
+def _get_pos_hdrs(f):
+    """Gets through POSCAR/CONTCAR/XDATCAR headers
+    and returns important informations"""
+    
+    from itertools import repeat, chain
+    from numpy.linalg import det
+    
+    # Headers are at the begining of the file
+    f.seek(0)
+
+    # Assume line 1 gives atom types (VASP 4.x format, check for that later)
+    atomtypes = f.readline().split()
+
+    # Get the "lattice constant" (aka scaling factor)
+    scaling_factor = float(f.readline())
+    basis_vectors =  _get_nlines(f, 3).astype(float).reshape(3,3)
+    
+    if scaling_factor < 0:
+        # The "lattice constant" is the cell volume
+        basis_vectors *= (-scaling_factor/abs(det(lattice)))**(1./3)
+    else:
+        # The "lattice constant" is a scaling factor
+        basis_vectors *= scaling_factor
+    
+    # Get the respective types and numbers of atoms
+    try:
+        # Assuming VASP 4.x format:
+        numofatoms = f.readline()
+        int(numofatoms.split()[0])
+        # In case 1st line does not contain all symbols
+        # Check for "CoP3_In-3.pos"-like syntax
         numsyms = len(numofatoms)
-        if len(atomtypes) < numsyms:
-            # First line in POSCAR/CONTCAR didn't contain enough symbols.
-
-            # Sometimes the first line in POSCAR/CONTCAR is of the form
-            # "CoP3_In-3.pos". Check for this case and extract atom types
-            if len(atomtypes) == 1 and '_' in atomtypes[0]:
+        numtypes = len(atomtypes)
+        if numtypes < numsyms:
+            if numtypes == 1 and '_' in atomtypes[0]:
                 atomtypes = get_atomtypes_from_formula(atomtypes[0])
             else:
+                #Nothing was found: check OUTCAR and POTCAR
                 atomtypes = atomtypes_outpot(f.name, numsyms)
         else:
+            # Too many types, too few atoms
             try:
                 for atype in atomtypes[:numsyms]:
                     if not atype in chemical_symbols:
                         raise KeyError
             except KeyError:
                 atomtypes = atomtypes_outpot(f.name, numsyms)
+    except ValueError:
+        # Falling back to VASP 5.x format (5th line: atom symbols):
+        atomtypes = numofatoms.split()
+        numofatoms = f.readline()
+    finally:
+        # Remove commented part of the line (if any)
+        numofatoms = numofatoms.split("!")[0]
+        # Get the actual number of atoms
+        numofatoms = [int(num) for num in numofatoms.split()]
 
-    for i, num in enumerate(numofatoms):
-        numofatoms[i] = int(num)
-        [atom_symbols.append(atomtypes[i]) for na in xrange(numofatoms[i])]
+    # Build atom list: ["Si", "Fe"] + [2, 3] --> ["Si", "Si", "Fe", "Fe", "Fe"]
+    # itertools.chain([[1, 2, 3], [4, 5]]) --> [1, 2, 3, 4, 5]
+    atom_symbols = list(
+            chain(*[[el[0]]*el[1] for el in zip(atomtypes, numofatoms)])
+            )
+    
+    return basis_vectors, atom_symbols
 
     # Check if Selective dynamics is switched on
     sdyn = f.readline()
