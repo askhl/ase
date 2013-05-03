@@ -88,6 +88,25 @@ def get_atomtypes_from_formula(formula):
         if s != atomtypes[-1]: atomtypes.append(s)
     return atomtypes
 
+def _get_nlines(f, n, skip=0, byte_offset=None):
+    """Get the content of n lines"""
+    import numpy as np
+    # Consider using itertools.islice if it raises problems
+    # Avoid f.readline().split()
+    # Change offset if needed
+    if byte_offset is not None:
+        f.seek(byte_offset)
+    # Skip n lines
+    for _ in xrange(skip):
+        f.readline()
+    # Get the data block borders
+    pos = f.tell()
+    for _ in xrange(n):
+        f.readline()
+    end = f.tell()
+    f.seek(pos)
+    # Return the data using only one call to ".split()" (faster)
+    return np.array(f.read(end-pos).split())
 
 def read_vasp(filename='CONTCAR'):
     """Import POSCAR/CONTCAR type file.
@@ -102,6 +121,7 @@ def read_vasp(filename='CONTCAR'):
     from ase.data import chemical_symbols
     import numpy as np
 
+    # Open the file
     if isinstance(filename, str):
         f = open(filename)
     else: # Assume it's a file-like object
