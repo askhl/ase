@@ -273,42 +273,123 @@ def _get_pos_hdrs(f):
     
     return basis_vectors, atom_symbols
 
-    # Check if Selective dynamics is switched on
-    sdyn = f.readline()
-    selective_dynamics = sdyn[0].lower() == "s"
+def _get_read_positions_from_xdat(filename='XDATCAR', index=-1):
+    
+    from os.path import getsize
+    
+    # Open the file
+    if isinstance(filename, str):
+        # Assume filename is the name of a file
+        f = open(filename, 'rb')
+    else:
+        # Falling back assuming filename is a file object
+        f = filename
+    
+    ## Reading the file
+    basis_vectors, atom_symbols = _get_pos_hdrs(f)
+    tot_natoms = len(atom_symbols)
+    # NO f.readlines() !!!
+    # Too memory consumming and slow random access
+    
+    # Get the offset of the 1st block
+    beg_block = f.tell()
+    # +1 is for the "Direct configuration=    1" line
+    _get_nlines(f, 0, skip=tot_natoms+1)
+    # Get the offset of the 2nd block
+    end_block = f.tell()
+    # Get position data block size in bytes
+    block_size = end_block - beg_block
+    
+    #Check boundaries to allow negative indexes
+    f_size = getsize(f.name)
+    # Get the total number of structures of file
+    maxnumofstruct = (f_size - beg_block) // block_size
+    
+    # Check if a slice object was given
+    try:
+        start = index.start or 0
+        step = index.step or 1
+        stop = index.stop or maxnumofstruct 
+    except AttributeError:
+        start = index
+        step = 1
+        stop = index + 1 if start != -1 else maxnumofstruct
+    
+    if start < 0:
+        start += maxnumofstruct
+    if (step is not None) and (step < 0):
+        # Don't want to bother with negative steps
+        step = - step
+    if (stop is not None) and (stop < 0):
+        stop += maxnumofstruct
+    
+    # Returns the positions asked for
+    return [_get_nlines(
+            f, tot_natoms, skip=1, byte_offset=i*block_size+beg_block
+            ).reshape(tot_natoms,3).astype("float") 
+            for i in xrange(start, stop, step)]
 
-    # Check if atom coordinates are cartesian or direct
-    if selective_dynamics:
-        ac_type = f.readline()
+def read_vasp_xdat(filename='XDATCAR', index=-1):
+    """Import POSCAR/CONTCAR type file.
+
+    Reads unitcell, and atom positions from the XDATCAR file
+    and read contrains from CONTCAR/POSCAR file if any.
+    """
+    
+    from ase import Atoms, Atom
+    from ase.constraints import FixAtoms, FixScaled
+    from ase.data import chemical_symbols
+    from itertools import repeat, chain, izip
+    import numpy as np
+
+    # Open the file
+    if isinstance(filename, str):
+        # Assume filename is the name of a file
+        f = open(filename, 'rb')
     else:
-        ac_type = sdyn
-    cartesian = ac_type[0].lower() == "c" or ac_type[0].lower() == "k"
-    tot_natoms = sum(numofatoms)
-    atoms_pos = np.empty((tot_natoms, 3))
-    if selective_dynamics:
-        selective_flags = np.empty((tot_natoms, 3), dtype=bool)
-    for atom in xrange(tot_natoms):
-        ac = f.readline().split()
-        atoms_pos[atom] = (float(ac[0]), float(ac[1]), float(ac[2]))
-        if selective_dynamics:
-            curflag = []
-            for flag in ac[3:6]:
-                curflag.append(flag == 'F')
-            selective_flags[atom] = curflag
-    # Done with all reading
-    if type(filename) == str:
+        # Falling back assuming filename is a file object
+        f = filename
+    
+    basis_vectors, atom_symbols = _get_pos_hdrs(f)
+    tot_natoms = len(atom_symbols)
+    
+    # Try to read constraints and last velocities 
+    # first from CONTCAR, then from POSCAR
+    try:      
+        _file = read_vasp('CONTCAR')
+        constr = _file.constraints
+        veloci = _file.get_velocities()
+    except:
+        try:
+            _file = read_vasp('POSCAR')
+            constr = _file.constraints
+            veloci = _file.get_velocities()
+        except:
+            constr = None
+            veloci = None
+    finally:
+        time_step = _file.info.get("time_step") or 1
+        del _file
+    
+    pos = _get_read_positions_from_xdat(f, index)
+    images = [Atoms(symbols = atom_symbols, cell = basis_vectors, pbc = True)
+              for i in repeat(None, len(pos))]
+        
+    for image, p in izip(images, pos):
+        image.set_scaled_positions(p)
+    
+    ## Done with all reading
+    try:
         f.close()
-    if cartesian:
-        atoms_pos *= lattice_constant
-    atoms = Atoms(symbols = atom_symbols, cell = basis_vectors, pbc = True)
-    if cartesian:
-        atoms.set_positions(atoms_pos)
-    else:
-        atoms.set_scaled_positions(atoms_pos)
-    if selective_dynamics:
+    except AttributeError:
+        pass
+    finally:
+        del f
+    
+    if constr is not None:
         constraints = []
         indices = []
-        for ind, sflags in enumerate(selective_flags):
+        for ind, sflags in enumerate(constr):
             if sflags.any() and not sflags.all():
                 constraints.append(FixScaled(atoms.get_cell(), ind, sflags))
             elif sflags.all():
@@ -317,7 +398,7 @@ def _get_pos_hdrs(f):
             constraints.append(FixAtoms(indices))
         if constraints:
             atoms.set_constraint(constraints)
-    return atoms
+    return images
 
 def read_vasp_out(filename='OUTCAR',index = -1):
     """Import OUTCAR type file.
