@@ -1375,7 +1375,7 @@ class VaspChargeDensity(object):
         self.augdiff = ''
         while True:
             try:
-                atoms = aiv.read_vasp(f)
+                atoms = aiv.read_vasp(f, force_velocity_off=True)
             except (IOError, ValueError, IndexError):
                 # Probably an empty line, or we tried to read the
                 # augmentation occupancies in CHGCAR

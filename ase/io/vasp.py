@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 This module contains functionality for reading and writing an ASE
 Atoms object in VASP POSCAR format.
@@ -5,6 +6,377 @@ Atoms object in VASP POSCAR format.
 """
 
 import os
+
+## IO helpers
+
+def _get_nlines(f, n, skip=0, byte_offset=None):
+    """Get the content of n lines"""
+    import numpy as np
+    # Consider using itertools.islice if it raises problems
+    # Avoid f.readline().split()
+    # Change offset if needed
+    if byte_offset is not None:
+        f.seek(byte_offset)
+    # Skip n lines
+    for _ in xrange(skip):
+        f.readline()
+    # Get the data block borders
+    pos = f.tell()
+    for _ in xrange(n):
+        f.readline()
+    end = f.tell()
+    f.seek(pos)
+    # Return the data using only one call to ".split()" (faster)
+    return np.array(f.read(end-pos).split())
+
+
+def _order_of_appearance(f, search_for=[], breaker=None, chunk_size=32768):
+    """Find the order of appearance of the terms searched for.
+    The file pointer is *NOT* moved after using this function. 
+
+    Parameters:
+
+    f: file object
+    search_for: list of strings/bytes in whatever order that are searched for
+    breaker: stop the search after the current chunk
+    chunk_size: size of a chunk of data in bytes (Defaults: 32768)
+
+    Returns:
+
+    list: searched terms sorted in order of appearance
+    terms not encountered are removed
+    """
+    mxl = max(map(len, search_for))
+    if chunk_size < mxl:
+        raise ValueError("Don't choose chunk_size smaller than the search term")
+    idx = range(len(search_for))
+    origin = f.tell()
+    start = origin
+    out = [None]*len(search_for)
+    while None in out:
+        _data = f.read(chunk_size)
+        if not _data:
+            break
+        # zip is needed. izip is not [].remove-safe
+        for i, term in zip(idx, search_for):
+            try:
+                out[i] = (term, _data.index(term) + start)
+                search_for.remove(term)
+                idx.remove(i)
+            except ValueError:
+                pass
+        if breaker is not None:
+            try:
+                _data.index(breaker)
+                break
+            except ValueError:
+                pass
+        start += chunk_size - mxl + 1
+        f.seek(start)
+    f.seek(origin)
+    return [i[0] for i in sorted([i for i in out if i is not None], key=lambda el: el[1])]
+
+
+def _go_next(f, search_for="", chunk_size=32768):
+    """Find the next occurence of a string/bytes in a file.
+    The file pointer is *MOVED* to the location of the searched term.
+
+    Parameters:
+
+    f: file object
+    search_for: string/array of bytes to be searched for
+    chunk_size: size of a chunk of data in bytes (Defaults: 32768)
+
+    Returns:
+
+    None: if 'search_for' has not been found
+    Current pointer location: if 'search_for' has been found
+    """
+    ml = len(search_for)
+    if chunk_size < ml:
+        raise ValueError("Don't choose chunk_size smaller than the search term")
+    start = f.tell() + 1
+    f.seek(start)
+    while True:
+        # Get the data
+        _data = f.read(chunk_size)
+        if not _data:
+            return None
+        # Search for term
+        try:
+            _pos = _data.index(search_for)
+            f.seek(_pos + start)
+            return _pos + start
+        except ValueError:
+            pass
+        # +1 : avoid double counting: 
+        # "... seekable" --> "eekable ..."
+        # "... seekabl" --> "seekable ..."
+        start += chunk_size - ml + 1 
+        # Change the position for the next step
+        f.seek(start)
+
+
+def _count_and_go(f, search_for="", n=1, chunk_size=32768):
+    """Go to the nth occurence of the term searched for.
+    The file pointer is *MOVED* to the location of the searched term.
+
+    Parameters:
+
+    f: file object
+    search_for: string/array of bytes to be searched for
+    n: counter
+    chunk_size: size of a chunk of data in bytes (Defaults: 32768)
+
+    Returns:
+
+    None: if 'search_for' has not been found
+    Current pointer location: if 'search_for' has been found
+    """
+    ml = len(search_for)
+    if chunk_size < ml:
+        raise ValueError("Don't choose chunk_size smaller than the search term")
+    start = f.tell()
+    f.seek(start)
+    while n > 0:
+        # Get the data
+        _data = f.read(chunk_size)
+        if not _data:
+            return None
+        # Search for term
+        n -= _data.count(search_for)
+        if n > 0:
+            start += chunk_size - ml + 1
+        f.seek(start)
+    _offset = -1
+    for _ in xrange(abs(n)+1):
+        _offset = _data.index(search_for, _offset+1)
+    f.seek(start+_offset)
+    return start+_offset
+        
+
+
+def _count(f, search_for="", chunk_size=32768*4):
+    """Count the number of times the searched term appear in a file from 
+    current file pointer location to the end.
+    The file pointer is *NOT* moved to the location of the searched term.
+
+    Parameters:
+
+    f: file object
+    search_for: string/array of bytes to be searched for
+    chunk_size: size of a chunk of data in bytes (Defaults: 32768*4)
+
+    Returns:
+
+    Number of times 'search_for' have been counted
+    """
+    ml = len(search_for)
+    if chunk_size < ml:
+        raise ValueError("Don't choose chunk_size smaller than the search term")
+    origin = f.tell()
+    start = origin
+    f.seek(start)
+    _counter = 0
+    while True:
+        # Get the data
+        _data = f.read(chunk_size)
+        if not _data:
+            f.seek(origin)
+            return _counter
+        # Search for term
+        _counter += _data.count(search_for)
+        start += chunk_size - ml + 1
+        f.seek(start)
+
+
+## Helper functions
+
+
+def _get_hdrs_cell(f):
+    """Gets through POSCAR/CONTCAR/XDATCAR headers
+    and returns important informations"""
+    
+    from itertools import repeat, chain
+    from numpy.linalg import det
+    
+    # Line 1 is comments (str)
+    comments = f.readline()
+    
+    # Line 2 (float)...
+    cell_factor = float(f.readline())
+    # ...is either a scaling factor (>0)
+    # or directly the cell volume (<0)
+    
+    # Lines 3-5 are lattice vectors (3x3 floats)
+    lattice_vectors = _get_nlines(f,3).astype(float).reshape(3,3)
+    # Apply scaling factor/cell volume from Line 2
+    if abs(cell_factor-1) < 1e-10:
+        # Identity
+        pass
+    elif cell_factor > 0:
+        # Scaling factor
+        lattice_vectors *= cell_factor
+    else:
+        # Cell volume
+        lattice_vectors *= (-cell_factor/abs(det(lattice)))**(1./3)
+    # Line 6 is a list of chemical symbols (VASP 5+)
+    # or the multiplicity of atoms (VASP 4.x)
+    # in this later case, chemical symbols have to be found an other way)
+    try:
+        # Assume VASP 5+ 
+        chemical_symbols = f.readline().split("!")[0].split()
+        
+        # Line 7 is the multiplicity of atoms
+        multiplicity = [int(el) for el in f.readline().split("!")[0].split()]
+    except ValueError:
+        # Falling back to VASP 4.x format
+        multiplicity = [int(el) for el in chemical_symbols]
+        
+        # Assume symbols are in comments (1st line)
+        chemical_symbols = comments.split("!")[0].split()
+        
+        # Magic part to determine symbols otherwise
+        num_of_symbols = len(chemical_symbols)
+        num_of_multi = len(multiplicity)
+        if num_of_multi < num_of_symbols:
+            if num_of_multi == 1 and "_" in chemical_symbols[0]:
+                # Try to decompose the formula
+                chemical_symbols = get_atomtypes_from_formula(chemical_symbols[0])
+            else:
+                # Nothing was found: check OUTCAR and POTCAR
+                chemical_symbols = atomtypes_outpot(f.name, num_of_symbols)
+        else:
+            # Too many types, too few atoms
+            try:
+                for atype in atomtypes[:numsyms]:
+                    if not atype in chemical_symbols:
+                        raise KeyError
+            except KeyError:
+                chemical_symbols = atomtypes_outpot(f.name, num_of_symbols)
+
+    
+        
+        
+    ############# Processing ############
+        
+    # Build atom list: ["Si", "O"] + [2, 3] --> ["Si", "Si", "O", "O", "O"]
+    # itertools.chain([[1, 2, 3], [4, 5]]) --> [1, 2, 3, 4, 5]
+    atom_symbols = list(
+        chain(*[[el[0]]*el[1] for el in zip(chemical_symbols, multiplicity)])
+    )
+        
+        
+    return lattice_vectors, atom_symbols
+
+
+def _get_cartesian_positions(f, num_of_atoms, lattice_vectors):
+    # Get the coordinate system
+    coordinate_system = f.readline().lstrip()[0].lower()
+    
+    # Check for constraints on atoms ("selective dynamics")
+    if coordinate_system == "s":
+        has_selective_dynamics = True
+        mat_len = 6 # y length of the coordinate matrix (3 positions + 3 constraints) 
+        coordinate_system = f.readline().lstrip()[0].lower()
+    else:
+        has_selective_dynamics = False
+        mat_len = 3 # y length of the coordinate matrix (3 positions)
+    
+  
+    # Further lines are atomic positions
+    atomic_positions = _get_nlines(f, num_of_atoms).reshape(num_of_atoms, mat_len)
+    
+    if has_selective_dynamics:
+        constraints = atomic_positions[:,3:6] == "F" # True if fixed ("F") coordinates
+        atomic_positions = atomic_positions[:,0:3].astype("float")
+    else:
+        constraints = None
+        atomic_positions = atomic_positions.astype("float")
+        
+    if coordinate_system == "d": # If the "Direct" coordinate system is used
+        atomic_cartesian_positions = atomic_positions.dot(lattice_vectors)
+        
+    return atomic_cartesian_positions, constraints
+
+
+def _get_cartesian_velocities(f, tot_natoms, lattice_vectors):
+    
+    before_velocity_pointer = f.tell()
+    try:
+        time_step = None
+        try:
+            ac_v_type = f.readline().lstrip()[0].lower()
+        except IndexError:
+            ac_v_type = ""
+        # VASP velocities are A/fs, while ASE want m/s
+        velocities = \
+    _get_nlines(f, tot_natoms).reshape(tot_natoms, 3).astype(float)
+        try:
+            time_step = float(_get_nlines(f, 1, skip=2)[0])
+        except (ValueError, IndexError):
+            velocities = None
+            f.seek(before_velocity_pointer)
+    except ValueError: 
+        velocities = None
+        f.seek(before_velocity_pointer)
+        
+    if (velocities is not None) and (ac_v_type == "d"):
+        # Transform to Cartesian and scale (vectors/time_step -> A/fs)
+        cartesian_velocities = velocities.dot(lattice_vectors)/time_step
+    else:
+        cartesian_velocities = velocities
+    
+    return cartesian_velocities, time_step
+
+
+def _get_read_positions_from_xdat(f, index=-1):
+    from os.path import getsize
+    ## Reading the file
+    f.seek(0)
+    basis_vectors, atom_symbols = _get_hdrs_cell(f)
+    tot_natoms = len(atom_symbols)
+    # NO f.readlines() !!!
+    # Too memory consumming and slow random access
+    
+    # Get the offset of the 1st block
+    beg_block = f.tell()
+    # +1 is for the "Direct configuration=    1" line
+    _get_nlines(f, 0, skip=tot_natoms+1)
+    # Get the offset of the 2nd block
+    end_block = f.tell()
+    # Get position data block size in bytes
+    block_size = end_block - beg_block
+    
+    #Check boundaries to allow negative indexes
+    f_size = getsize(f.name)
+    # Get the total number of structures of file
+    maxnumofstruct = (f_size - beg_block) // block_size
+    
+    # Check if a slice object was given
+    try:
+        start = index.start or 0
+        step = index.step or 1
+        stop = index.stop or maxnumofstruct 
+    except AttributeError:
+        start = index
+        step = 1
+        stop = index + 1 if start != -1 else maxnumofstruct
+    
+    if start < 0:
+        start += maxnumofstruct
+    if (step is not None) and (step < 0):
+        # Don't want to bother with negative steps
+        step = - step
+    if (stop is not None) and (stop < 0):
+        stop += maxnumofstruct
+    
+    # Returns the positions asked for
+    return [_get_nlines(
+            f, tot_natoms, skip=1, byte_offset=i*block_size+beg_block
+            ).reshape(tot_natoms,3).astype("float") 
+            for i in xrange(start, stop, step)]
+
 
 def get_atomtypes(fname):
     """Given a file name, get the atomic symbols. 
@@ -27,6 +399,7 @@ def get_atomtypes(fname):
         if line.find('TITEL') != -1:
             atomtypes.append(line.split()[3].split('_')[0].split('.')[0])
     return atomtypes
+
 
 def atomtypes_outpot(posfname, numsyms):
     """Try to retreive chemical symbols from OUTCAR or POTCAR
@@ -88,27 +461,11 @@ def get_atomtypes_from_formula(formula):
         if s != atomtypes[-1]: atomtypes.append(s)
     return atomtypes
 
-def _get_nlines(f, n, skip=0, byte_offset=None):
-    """Get the content of n lines"""
-    import numpy as np
-    # Consider using itertools.islice if it raises problems
-    # Avoid f.readline().split()
-    # Change offset if needed
-    if byte_offset is not None:
-        f.seek(byte_offset)
-    # Skip n lines
-    for _ in xrange(skip):
-        f.readline()
-    # Get the data block borders
-    pos = f.tell()
-    for _ in xrange(n):
-        f.readline()
-    end = f.tell()
-    f.seek(pos)
-    # Return the data using only one call to ".split()" (faster)
-    return np.array(f.read(end-pos).split())
 
-def read_vasp(filename='CONTCAR'):
+## Parsing functions
+
+
+def read_vasp(filename='CONTCAR', force_velocity_off=False):
     """Import POSCAR/CONTCAR type file.
 
     Reads unitcell, atom positions and constraints from the POSCAR/CONTCAR
@@ -131,69 +488,31 @@ def read_vasp(filename='CONTCAR'):
         f = filename
 
     ## Reading the file
-    basis_vectors, atom_symbols = _get_pos_hdrs(f)
-    tot_natoms = len(atom_symbols)
-
-    # Check if 'selective dynamics' is switched on
-    sdyn = f.readline()
-    has_selective_dynamics = (sdyn[0].lower() == "s")
-
-    if has_selective_dynamics:
-        ac_type = f.readline()
-        _data = _get_nlines(f, tot_natoms).reshape(tot_natoms, 6)
-        atoms_pos = _data[0:tot_natoms, 0:3].astype(float)
-        # 'F': Fixed and 'T': Free
-        # selective_flags: True if coordinate is FIXED ("F")
-        selective_flags = (_data[0:tot_natoms, 3:6] == "F")
-    else:
-        ac_type = sdyn
-        atoms_pos = \
-            _get_nlines(f, tot_natoms).reshape(tot_natoms, 3).astype(float)
+    # Get lattice vectors and symbols
+    lattice_vectors, chemical_symbols = _get_hdrs_cell(f)
+    tot_natoms = len(chemical_symbols)
     
-    b_vel_ptr = f.tell()
-    try:
-        time_step = None
-        ac_v_type = f.readline()
-        # VASP velocities are A/fs, while ASE want m/s
-        velocities = \
-    _get_nlines(f, tot_natoms).reshape(tot_natoms, 3).astype(float)
-        try:
-            time_step = float(_get_nlines(f, 1, skip=2)[0])
-        except (ValueError, IndexError):
-            pass
-    except ValueError: 
-        velocities = None
-        f.seek(b_vel_ptr)
+    # Get positions and constraints if available (otherwise, None) 
+    cartesian_positions, atomic_constraints = _get_cartesian_positions(f, tot_natoms, lattice_vectors)
     
-    ## Done with all reading
-    
-    # Check if coordinate sets are cartesian or direct
-    is_cartesian = (ac_type[0].lower() in "ck")
-  
     # Create the Atoms object, set positions and velocities
-    atoms = Atoms(symbols = atom_symbols, cell = basis_vectors, pbc = True)
-    if is_cartesian:
-        atoms.set_positions(atoms_pos*scaling_factor)
-    else:
-        atoms.set_scaled_positions(atoms_pos)
-    del atoms_pos
-    if velocities is not None:
-        # "Cartesian" is default if nothing is given
-        is_v_direct = (ac_v_type[0].lower() in "d")
-        if is_v_direct:
-            # Transform to Cartesian and scale (vectors/time_step -> A/fs)
-            atoms.set_velocities(velocities.dot(basis_vectors)/time_step)
-        else:
-            atoms.set_velocities(velocities)
+    atoms = Atoms(symbols = chemical_symbols, cell = lattice_vectors, pbc = True)
+    atoms.set_positions(cartesian_positions)
     
-    atoms.info["time_step"] = time_step or 1
+    if not force_velocity_off:
+        # Try to get velocities (file pointer is not moved if parsing fails)
+        cartesian_velocities, time_step = _get_cartesian_velocities(f, tot_natoms, lattice_vectors)
+        if cartesian_velocities is not None:
+            atoms.set_velocities(cartesian_velocities)
+
+        atoms.info["time_step"] = time_step or 1
 
     
-    if has_selective_dynamics:
+    if atomic_constraints is not None:
         constraints = []
         indices = []
 
-        for ind, sflags in enumerate(selective_flags):
+        for ind, sflags in enumerate(atomic_constraints):
             if sflags.any() and not sflags.all():
                 constraints.append(FixScaled(atoms.get_cell(), ind, sflags))
             elif sflags.all():
@@ -204,123 +523,6 @@ def read_vasp(filename='CONTCAR'):
             atoms.set_constraint(constraints)
     return atoms
 
-def _get_pos_hdrs(f):
-    """Gets through POSCAR/CONTCAR/XDATCAR headers
-    and returns important informations"""
-    
-    from itertools import repeat, chain
-    from numpy.linalg import det
-    
-    # Assume line 1 gives atom types (VASP 4.x format, check for that later)
-    atomtypes = f.readline().split()
-
-    # Get the "lattice constant" (aka scaling factor)
-    scaling_factor = float(f.readline())
-    basis_vectors =  _get_nlines(f, 3).astype(float).reshape(3,3)
-    
-    if scaling_factor < 0:
-        # The "lattice constant" is the cell volume
-        basis_vectors *= (-scaling_factor/abs(det(lattice)))**(1./3)
-    else:
-        # The "lattice constant" is a scaling factor
-        basis_vectors *= scaling_factor
-    
-    # Get the respective types and numbers of atoms
-    try:
-        # Assuming VASP 4.x format:
-        numofatoms = f.readline()
-        int(numofatoms.split()[0])
-        # In case 1st line does not contain all symbols
-        # Check for "CoP3_In-3.pos"-like syntax
-        numsyms = len(numofatoms)
-        numtypes = len(atomtypes)
-        if numtypes < numsyms:
-            if numtypes == 1 and '_' in atomtypes[0]:
-                atomtypes = get_atomtypes_from_formula(atomtypes[0])
-            else:
-                #Nothing was found: check OUTCAR and POTCAR
-                atomtypes = atomtypes_outpot(f.name, numsyms)
-        else:
-            # Too many types, too few atoms
-            try:
-                for atype in atomtypes[:numsyms]:
-                    if not atype in chemical_symbols:
-                        raise KeyError
-            except KeyError:
-                atomtypes = atomtypes_outpot(f.name, numsyms)
-    except ValueError:
-        # Falling back to VASP 5.x format (5th line: atom symbols):
-        atomtypes = numofatoms.split()
-        numofatoms = f.readline()
-    finally:
-        # Remove commented part of the line (if any)
-        numofatoms = numofatoms.split("!")[0]
-        # Get the actual number of atoms
-        numofatoms = [int(num) for num in numofatoms.split()]
-
-    # Build atom list: ["Si", "Fe"] + [2, 3] --> ["Si", "Si", "Fe", "Fe", "Fe"]
-    # itertools.chain([[1, 2, 3], [4, 5]]) --> [1, 2, 3, 4, 5]
-    atom_symbols = list(
-            chain(*[[el[0]]*el[1] for el in zip(atomtypes, numofatoms)])
-            )
-    
-    return basis_vectors, atom_symbols
-
-def _get_read_positions_from_xdat(filename='XDATCAR', index=-1):
-    
-    from os.path import getsize
-    
-    # Open the file
-    if isinstance(filename, str):
-        # Assume filename is the name of a file
-        f = open(filename, 'rb')
-    else:
-        # Falling back assuming filename is a file object
-        f = filename
-    
-    ## Reading the file
-    basis_vectors, atom_symbols = _get_pos_hdrs(f)
-    tot_natoms = len(atom_symbols)
-    # NO f.readlines() !!!
-    # Too memory consumming and slow random access
-    
-    # Get the offset of the 1st block
-    beg_block = f.tell()
-    # +1 is for the "Direct configuration=    1" line
-    _get_nlines(f, 0, skip=tot_natoms+1)
-    # Get the offset of the 2nd block
-    end_block = f.tell()
-    # Get position data block size in bytes
-    block_size = end_block - beg_block
-    
-    #Check boundaries to allow negative indexes
-    f_size = getsize(f.name)
-    # Get the total number of structures of file
-    maxnumofstruct = (f_size - beg_block) // block_size
-    
-    # Check if a slice object was given
-    try:
-        start = index.start or 0
-        step = index.step or 1
-        stop = index.stop or maxnumofstruct 
-    except AttributeError:
-        start = index
-        step = 1
-        stop = index + 1 if start != -1 else maxnumofstruct
-    
-    if start < 0:
-        start += maxnumofstruct
-    if (step is not None) and (step < 0):
-        # Don't want to bother with negative steps
-        step = - step
-    if (stop is not None) and (stop < 0):
-        stop += maxnumofstruct
-    
-    # Returns the positions asked for
-    return [_get_nlines(
-            f, tot_natoms, skip=1, byte_offset=i*block_size+beg_block
-            ).reshape(tot_natoms,3).astype("float") 
-            for i in xrange(start, stop, step)]
 
 def read_vasp_xdat(filename='XDATCAR', index=-1):
     """Import POSCAR/CONTCAR type file.
@@ -343,7 +545,7 @@ def read_vasp_xdat(filename='XDATCAR', index=-1):
         # Falling back assuming filename is a file object
         f = filename
     
-    basis_vectors, atom_symbols = _get_pos_hdrs(f)
+    basis_vectors, atom_symbols = _get_hdrs_cell(f)
     tot_natoms = len(atom_symbols)
     
     # Try to read constraints and last velocities 
@@ -352,6 +554,7 @@ def read_vasp_xdat(filename='XDATCAR', index=-1):
         _file = read_vasp('CONTCAR')
         constr = _file.constraints
         veloci = _file.get_velocities()
+        time_step = _file.info.get("time_step") or 1
     except:
         try:
             _file = read_vasp('POSCAR')
@@ -360,9 +563,6 @@ def read_vasp_xdat(filename='XDATCAR', index=-1):
         except:
             constr = None
             veloci = None
-    finally:
-        time_step = _file.info.get("time_step") or 1
-        del _file
     
     pos = _get_read_positions_from_xdat(f, index)
     images = [Atoms(symbols = atom_symbols, cell = basis_vectors, pbc = True)
@@ -393,160 +593,6 @@ def read_vasp_xdat(filename='XDATCAR', index=-1):
             atoms.set_constraint(constraints)
     return images
 
-def _order_of_appearance(f, search_for=[], breaker=None, chunk_size=32768):
-    """Find the order of appearance of the terms searched for.
-    The file pointer is *NOT* moved after using this function. 
-
-    Parameters:
-
-    f: file object
-    search_for: list of strings/bytes in whatever order that are searched for
-    breaker: stop the search after the current chunk
-    chunk_size: size of a chunk of data in bytes (Defaults: 32768)
-
-    Returns:
-
-    list: searched terms sorted in order of appearance
-    terms not encountered are removed
-    """
-    mxl = max(map(len, search_for))
-    if chunk_size < mxl:
-        raise ValueError("Don't choose chunk_size smaller than the search term")
-    idx = range(len(search_for))
-    origin = f.tell()
-    start = origin
-    out = [None]*len(search_for)
-    while None in out:
-        _data = f.read(chunk_size)
-        if not _data:
-            break
-        # zip is needed. izip is not [].remove-safe
-        for i, term in zip(idx, search_for):
-            try:
-                out[i] = (term, _data.index(term) + start)
-                search_for.remove(term)
-                idx.remove(i)
-            except ValueError:
-                pass
-        if breaker is not None:
-            try:
-                _data.index(breaker)
-                break
-            except ValueError:
-                pass
-        start += chunk_size - mxl + 1
-        f.seek(start)
-    f.seek(origin)
-    return [i[0] for i in sorted([i for i in out if i is not None], key=lambda el: el[1])]
-
-def _go_next(f, search_for="", chunk_size=32768):
-    """Find the next occurence of a string/bytes in a file.
-    The file pointer is *MOVED* to the location of the searched term.
-
-    Parameters:
-
-    f: file object
-    search_for: string/array of bytes to be searched for
-    chunk_size: size of a chunk of data in bytes (Defaults: 32768)
-
-    Returns:
-
-    None: if 'search_for' has not been found
-    Current pointer location: if 'search_for' has been found
-    """
-    ml = len(search_for)
-    if chunk_size < ml:
-        raise ValueError("Don't choose chunk_size smaller than the search term")
-    start = f.tell() + 1
-    f.seek(start)
-    while True:
-        # Get the data
-        _data = f.read(chunk_size)
-        if not _data:
-            return None
-        # Search for term
-        try:
-            _pos = _data.index(search_for)
-            f.seek(_pos + start)
-            return _pos + start
-        except ValueError:
-            pass
-        # +1 : avoid double counting: 
-        # "... seekable" --> "eekable ..."
-        # "... seekabl" --> "seekable ..."
-        start += chunk_size - ml + 1 
-        # Change the position for the next step
-        f.seek(start)
-
-def _count_and_go(f, search_for="", n=1, chunk_size=32768):
-    """Go to the nth occurence of the term searched for.
-    The file pointer is *MOVED* to the location of the searched term.
-
-    Parameters:
-
-    f: file object
-    search_for: string/array of bytes to be searched for
-    n: counter
-    chunk_size: size of a chunk of data in bytes (Defaults: 32768)
-
-    Returns:
-
-    None: if 'search_for' has not been found
-    Current pointer location: if 'search_for' has been found
-    """
-    ml = len(search_for)
-    if chunk_size < ml:
-        raise ValueError("Don't choose chunk_size smaller than the search term")
-    start = f.tell()
-    f.seek(start)
-    while n > 0:
-        # Get the data
-        _data = f.read(chunk_size)
-        if not _data:
-            return None
-        # Search for term
-        n -= _data.count(search_for)
-        if n > 0:
-            start += chunk_size - ml + 1
-        f.seek(start)
-    _offset = -1
-    for _ in xrange(abs(n)+1):
-        _offset = _data.index(search_for, _offset+1)
-    f.seek(start+_offset)
-    return start+_offset
-        
-def _count(f, search_for="", chunk_size=32768*4):
-    """Count the number of times the searched term appear in a file from 
-    current file pointer location to the end.
-    The file pointer is *NOT* moved to the location of the searched term.
-
-    Parameters:
-
-    f: file object
-    search_for: string/array of bytes to be searched for
-    chunk_size: size of a chunk of data in bytes (Defaults: 32768*4)
-
-    Returns:
-
-    Number of times 'search_for' have been counted
-    """
-    ml = len(search_for)
-    if chunk_size < ml:
-        raise ValueError("Don't choose chunk_size smaller than the search term")
-    origin = f.tell()
-    start = origin
-    f.seek(start)
-    _counter = 0
-    while True:
-        # Get the data
-        _data = f.read(chunk_size)
-        if not _data:
-            f.seek(origin)
-            return _counter
-        # Search for term
-        _counter += _data.count(search_for)
-        start += chunk_size - ml + 1
-        f.seek(start)
 
 def read_vasp_out(filename='OUTCAR', index=-1):
     """Import OUTCAR type file.
@@ -693,6 +739,10 @@ def read_vasp_out(filename='OUTCAR', index=-1):
 
     return images
 
+
+## Writing functions
+
+
 def write_vasp(filename, atoms, label='', direct=False, sort=None, symbol_count = None, long_format=True, vasp5=False):
     """Method to write VASP position (POSCAR/CONTCAR) files.
 
@@ -823,3 +873,4 @@ def write_vasp(filename, atoms, label='', direct=False, sort=None, symbol_count 
 
     if type(filename) == str:
         f.close()
+
