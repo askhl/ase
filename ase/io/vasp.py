@@ -7,7 +7,6 @@ Atoms object in VASP POSCAR format.
 
 import os
 
-## IO helpers
 
 def _get_nlines(f, n, skip=0, byte_offset=None):
     """Get the content of n lines"""
@@ -247,13 +246,14 @@ def _get_hdrs_cell(f):
                 # Nothing was found: check OUTCAR and POTCAR
                 chemical_symbols = atomtypes_outpot(f.name, num_of_symbols)
         else:
+            pass
             # Too many types, too few atoms
-            try:
-                for atype in atomtypes[:numsyms]:
-                    if not atype in chemical_symbols:
-                        raise KeyError
-            except KeyError:
-                chemical_symbols = atomtypes_outpot(f.name, num_of_symbols)
+            #try:
+            #    for atype in atomtypes[:numsyms]:
+            #        if not atype in chemical_symbols:
+            #            raise KeyError
+            #except KeyError:
+            #    chemical_symbols = atomtypes_outpot(f.name, num_of_symbols)
 
     
         
@@ -296,6 +296,8 @@ def _get_cartesian_positions(f, num_of_atoms, lattice_vectors):
         
     if coordinate_system == "d": # If the "Direct" coordinate system is used
         atomic_cartesian_positions = atomic_positions.dot(lattice_vectors)
+    else:
+        atomic_cartesian_positions = atomic_positions
         
     return atomic_cartesian_positions, constraints
 
@@ -678,15 +680,33 @@ def read_vasp_out(filename='OUTCAR', index=-1):
         species = [i if i[-1] not in "_.1 " else i[0] for i in species]
     
     # Get the associated multiplicity
+    if _go_next(f, "NIONS =") is not None:
+        natoms = int(f.readline().split("NIONS =")[1])
+
     if _go_next(f, "ions per type =") is not None:
         species_num = [int(i) for i in f.readline()[len("ions per type ="):].split()]
-        natoms = sum(species_num)
-    
-        # Construct the list of atom symbols 
-        symbols = list(
-           chain(*[[el[0]]*el[1] for el in zip(species, species_num)])
-               )
-    
+        diff_natoms = natoms - sum(species_num)
+        if diff_natoms != 0:
+            try:
+                atoms = read_vasp("CONTCAR")
+                symbols = atoms.get_chemical_symbols()
+            except IOError:
+                try:
+                    atoms = read_vasp("POSCAR")
+                    symbols = atoms.get_chemical_symbols()
+                except IOError:
+                    species.extend(["X"]*(diff_natoms))
+                    species_num.append(diff_natoms)
+                    # Construct the list of atom symbols 
+                    symbols = list(
+                    chain(*[[el[0]]*el[1] for el in zip(species, species_num)])
+                        )
+        else:
+            # Construct the list of atom symbols 
+            symbols = list(
+            chain(*[[el[0]]*el[1] for el in zip(species, species_num)])
+                )
+
     # Get the unit cell
     if _go_next(f, "direct lattice vectors") is not None:
         cell = _get_nlines(f, 3, skip=1).reshape(3,6)[:3,:3].astype(float)
