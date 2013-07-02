@@ -4,8 +4,8 @@ Embedding CALCULATORS AND SCRIPTS
 
 multiase:	Copyright (c) 2012 Aalto University
 		Authors: 
-		mixer: Lauri Leukkunen (lauri.leukkunen@aalto.fi)
-		lammps: Tuukka Verho (tuukka.verho@aalto.fi)
+		Lauri Leukkunen (lauri.leukkunen@aalto.fi)
+		Tuukka Verho (tuukka.verho@aalto.fi)
 		Olga Lopez Acevedo (olga.lopez.acevedo@aalto.fi)
 
 xxxxxxx:	yyyyy (email)
@@ -15,10 +15,10 @@ Description of directory structure
 
 ::
 
-  multiase/		- contains base calculators
+  multiase/		- contains base calculators for mixing
   	lammps/		- modified ASE lammps interface
   	mixer/		- base calculator for combining other ase calculators
-
+  calculators/		- contains user-friendly mixing methods (ex. oniom)
   tests/		- test scripts
   scripts/		- various utility scripts
   data/			- data files used by tests and scripts
