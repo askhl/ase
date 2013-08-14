@@ -22,7 +22,7 @@ class OPLSAA(LAMMPSBase):
 		self.parameters.angle_style    = 'harmonic'
 		self.parameters.dihedral_style = 'multi/harmonic'
 		#self.parameters.improper_style = 'harmonic'
-		self.parameters.special_bonds  = 'lj/coul 0.0 0.0 0.5'
+		self.parameters.special_bonds  = 'lj/coul 0.0 0.0 0.0'
 		
 		# Read force field file
 		ffnonbonded = os.path.join(gromacs_dir, 'oplsaa.ff', 'ffnonbonded.itp')

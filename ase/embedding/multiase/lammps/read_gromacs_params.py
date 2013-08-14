@@ -75,7 +75,7 @@ def add_bond(fields, ffdata):
 
 def add_angle(fields, ffdata):
 	type = SequenceType(fields[:3])
-	K = float(fields[-1]) * kJmol
+	K = 0.5*float(fields[-1]) * kJmol
 	th0 = float(fields[-2])
 	ffdata.add('angle', type, 'Angle Coeffs', [K, th0])
 
@@ -103,7 +103,7 @@ def add_dihedral(fields, ffdata):
 		if float(fields[10]) != 0:
 			print 'RB dihedral has an unsupported nonzero C5 coeff. Ignoring...'
 			return
-		parameters = [float(f) * kJmol for f in fields[5:10]]
+		parameters = [float(fields[5+i])*(-1)**i * kJmol for i in range(5)]
 	else:
 		raise RuntimeError('Unsupported dihedral formula: %s' % fields[4])
 	ffdata.add('dihedral', type, 'Dihedral Coeffs', parameters)
