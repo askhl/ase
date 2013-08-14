@@ -6,7 +6,7 @@ Installation requirements
 
 The following packages are required for basic ASE functionality:
 
-1) Python_ 2.4 - 2.7.
+1) Python_ 2.6 - 2.7.
 2) NumPy_.
 
 .. _Python: http://www.python.org
@@ -65,6 +65,8 @@ When using svn please set the following variable:
 ======= =========== ============================================ =============================
 Release Date        Retrieve as svn checkout                     Retrieve as tarball
 ======= =========== ============================================ =============================
+ 3.7.1_ May 16 2013 ``svn co -r 3184 $ASE_TAGS/3.7.1 ase-3.7.1`` python-ase-3.7.1.3184.tar.gz_
+ 3.7.0_ May 13 2013 ``svn co -r 3168 $ASE_TAGS/3.7.0 ase-3.7.0`` python-ase-3.7.0.3168.tar.gz_
  3.6.0_ Feb 24 2012 ``svn co -r 2515 $ASE_TAGS/3.6.0 ase-3.6.0`` python-ase-3.6.0.2515.tar.gz_
  3.5.1_ May 24 2011 ``svn co -r 2175 $ASE_TAGS/3.5.1 ase-3.5.1`` python-ase-3.5.1.2175.tar.gz_
  3.4.1_ Aug 11 2010 ``svn co -r 1765 $ASE_TAGS/3.4.1 ase-3.4.1`` python-ase-3.4.1.1765.tar.gz_
@@ -74,6 +76,18 @@ Release Date        Retrieve as svn checkout                     Retrieve as tar
  3.1.0_ Mar 27 2009 ``svn co -r 846 $ASE_TAGS/3.1.0 ase-3.1.0``  python-ase-3.1.0.846.tar.gz_
  3.0.0_ Nov 13 2008 ``svn co -r 657 $ASE_TAGS/3.0.0 ase-3.0.0``  python-ase-3.0.0.657.tar.gz_
 ======= =========== ============================================ =============================
+
+.. _3.7.1:
+    https://trac.fysik.dtu.dk/projects/ase/browser/tags/3.7.1
+
+.. _python-ase-3.7.1.3184.tar.gz:
+    https://wiki.fysik.dtu.dk/ase-files/python-ase-3.7.1.3184.tar.gz
+
+.. _3.7.0:
+    https://trac.fysik.dtu.dk/projects/ase/browser/tags/3.7.0
+
+.. _python-ase-3.7.0.3168.tar.gz:
+    https://wiki.fysik.dtu.dk/ase-files/python-ase-3.7.0.3168.tar.gz
 
 .. _3.6.0:
     https://trac.fysik.dtu.dk/projects/ase/browser/tags/3.6.0
@@ -140,6 +154,7 @@ or from the daily snapshot: `<python-ase-snapshot.tar.gz>`_.
 
    The recommended checkout path is :envvar:`$HOME`.
 
+
 .. _installation:
 
 ============
@@ -148,20 +163,24 @@ Installation
 
 After performing the installation do not forget to :ref:`running_tests`!
 
+
 .. _macosx_installation:
 
 Installation on OS X
 ====================
 
 For installation with http://mxcl.github.com/homebrew/ please follow
-instructions at `Homebrew <https://wiki.fysik.dtu.dk/gpaw/install/MacOSX/homebrew.html>`_.
+instructions at `Homebrew
+<https://wiki.fysik.dtu.dk/gpaw/install/MacOSX/homebrew.html>`_.
+
 
 .. _pm_installation:
 
 Installation with package manager on Linux
 ==========================================
 
-Install the binaries with the software package manager of your Linux distribution.
+Install the binaries with the software package manager of your Linux
+distribution.
 
 This is **the preferred** way to install on a Linux system.
 
@@ -209,8 +228,8 @@ The currently supported systems include (issue the commands below **as root**):
 
   .. note::
 
-    Alternative packages for ubuntu are provided at
-    `Ubuntu package <https://wiki.fysik.dtu.dk/gpaw/install/Linux/Ubuntu_ppa.html#ubuntupackage>`_.
+    Alternative packages for ubuntu are provided at `Ubuntu package
+    <https://wiki.fysik.dtu.dk/gpaw/install/Linux/Ubuntu_ppa.html#ubuntupackage>`_.
 
 For the full list of supported distributions check
 https://build.opensuse.org/package/show?package=python-ase&project=home%3Adtufys
@@ -294,6 +313,7 @@ On the command prompt:
 .. _python-ase-win32.msi:
     https://wiki.fysik.dtu.dk/ase-files/python-ase-3.6.1.2627.win32.msi
 
+
 .. _manual_installation:
 
 Manual installation
@@ -305,13 +325,13 @@ to the requested version, e.g.:
 - if retrieved from ``svn``::
 
    $ cd $HOME
-   $ ln -s ase-3.5.1 ase
+   $ ln -s ase-3.7.0 ase
     
 - if retrieved as ``tarball``::
 
    $ cd $HOME
-   $ tar zxf python-ase-3.5.1.2175.tar.gz
-   $ ln -s python-ase-3.5.1.2175 ase
+   $ tar zxf python-ase-3.7.0.3168.tar.gz
+   $ ln -s python-ase-3.7.0.3168 ase
 
 It is sufficient to
 put the directory :file:`$HOME/ase` in your :envvar:`PYTHONPATH`
@@ -329,6 +349,17 @@ or your :file:`~/.cshrc` file::
 
 Instead of :envvar:`HOME`, you may use any other directory.
 
+Alternatively, you can install ASE to the user-specific site-packages
+directory with::
+
+  $ cd ase
+  $ python setup.py install --user
+
+This way, the ASE modules are found on the python path without any
+explicit configuration, though you still need to ensure that
+:file:`$HOME/.local/bin` (or on Windows,
+:file:`%APPDATA%/Python/Scripts`) is on your :envvar:`PATH`.
+
 .. index:: test
 
 Optional, **NOT** recommended way of installing ASE system-wide is::
@@ -337,6 +368,7 @@ Optional, **NOT** recommended way of installing ASE system-wide is::
   $ sudo python setup.py install
 
 This is one of the best ways to ruin a Linux system.
+
 
 .. _running_tests:
 
@@ -349,27 +381,21 @@ directory (preferably using bash)::
 
   $ bash
   $ mkdir /tmp/testase.$$; cd /tmp/testase.*
-  $ testase.py 2>&1 | tee testase.log
-
-.. note:: 
-
-   In the development version of ASE, and in future stable versions,
-   the test script is just named :file:`testase`.
+  $ python -c "from ase.test import test; test(verbosity=2, display=True)" 2>&1 | tee testase.log
 
 .. note::
 
    The last test :trac:`ase/test/COCu111.py` requires closing
    the graphics windows to terminate the whole test-suite.
 
+.. note::
+
+   If matplotlib_ or pygtk_ is not installed, this test will
+   fail - avoid this with ``display=False``.
+
 If any of the tests fail,
 then please send us :file:`testase.log` (see :ref:`bugs`).
 
-.. note::
-
-   If matplotlib_ or pygtk_ is not installed, one of the tests will
-   fail - avoid this with::
-
-     $ testase.py --no-display
 
 Video tutorial
 ==============

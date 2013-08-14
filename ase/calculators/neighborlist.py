@@ -77,8 +77,7 @@ class NeighborList:
                 n = 0
             N.append(n)
             
-        offsets = np.empty((len(atoms), 3), int)
-        (scaled0 - scaled).round(out=offsets)
+        offsets = (scaled0 - scaled).round().astype(int)
         positions0 = np.dot(scaled0, self.cell)
         natoms = len(atoms)
         indices = np.arange(natoms)
@@ -120,8 +119,9 @@ class NeighborList:
                     neighbors2[b].append(a)
                     displacements2[b].append(-disp)
             for a in range(natoms):
-                self.neighbors[a] = np.concatenate((self.neighbors[a],
-                                                    neighbors2[a]))
+                # Force neighbors to be integer array
+                self.neighbors[a] = np.array(np.concatenate((self.neighbors[a],
+                                                    neighbors2[a])), int)
                 self.displacements[a] = np.array(list(self.displacements[a]) +
                                                  displacements2[a])
 

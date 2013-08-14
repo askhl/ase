@@ -1,6 +1,7 @@
 from lammpsbase import LAMMPSBase
 import read_compass_params
 import typing, pcfftypes
+import numpy as np
 
 class PCFF(LAMMPSBase):
 	
@@ -28,21 +29,20 @@ class PCFF(LAMMPSBase):
 		self.type_resolver.resolve_atoms(atoms)
 		return atoms.info['atom_types']
 	
-	def set_charges(self, atoms, atom_types):
-		bonds = atoms.info['bonds']
+	def determine_charges(self, atoms, atom_types):
 		eq = self.ff_data.equivalence
-		for i in range(len(atoms)):
-			q = 0
+		charges = np.zeros(len(atoms))
+		
+		for i, j in atoms.info['bonds']:
 			t1 = eq[atom_types[i]]['bond']
-			for j in bonds[i]:
-				t2 = eq[atom_types[j]]['bond']
-				increment = self.bond_increments.get((t1, t2))
-				if increment:
-					q += increment[0]
-				else:
-					increment = self.bond_increments.get((t2, t1))
-					if not increment:
-						raise RuntimeError('No bond increment for (%s, %s)' % (t1, t2))
-					q += increment[1]
-			atoms[i].charge = q
+			t2 = eq[atom_types[j]]['bond']
+			if not (t1, t2) in self.bond_increments:
+				i,j = j,i
+				t1,t2 = t2,t1
+			increment = self.bond_increments.get((t1, t2))
+			if not increment:
+				raise RuntimeError('No bond increment for (%s, %s)' % (t1, t2))
+			charges[i] += increment[0]
+			charges[j] += increment[1]
+		return charges
 		

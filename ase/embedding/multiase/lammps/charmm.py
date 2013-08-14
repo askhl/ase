@@ -26,19 +26,21 @@ class CHARMM(LAMMPSBase):
 		self.type_resolver.resolve_atoms(atoms)
 		return atoms.info['atom_types']
 		
-	def set_charges(self, atoms, atom_types):
+	def determine_charges(self, atoms, atom_types):
 		if self.auto_charges:
-			set_charges(atoms)
+			return charges_by_increments(atoms)
+		else:
+			return atoms.get_initial_charges()
 		
 	def prepare_calculation(self, atoms, data):
-		if (atoms.get_charges() == 0).all():
+		if not self.auto_charges and (atoms.get_initial_charges() == 0).all():
 			warnings.warn("No partial charges set! There won't be any Coulomb interactions.")
 
 
 # CHARMM charges taken from top_all36_cgenff.rtf. The bond increment model seems
 # to work with molecules containing C, H and O. With nitrogen it gets tricky.
 
-def set_charges(atoms):
+def charges_by_increments(atoms):
 	
 	bond_increments = {
 		('HGP1', 'OG311'):  .42,
@@ -52,10 +54,15 @@ def set_charges(atoms):
 		('CG2R61', 'OG311'): .11       # phenol
 		}
 	
+	charges = atoms.get_initial_charges()
 	types = atoms.info['atom_types']
-	for i in range(len(atoms)):
-		for j in atoms.info['bonds'][i]:
-			incr = bond_increments.get((types[i], types[j]))
-			if incr:
-				atoms[i].charge += incr
-				atoms[j].charge -= incr
+	for i,j in atoms.info['bonds']:
+		if types[i] == types[j]: continue
+		if not (types[i], types[j]) in bond_increments:
+			i,j = j,i
+		incr = bond_increments.get((types[i], types[j]))
+		if not incr:
+			return atoms.get_initial_charges()
+		charges[i] += incr
+		charges[j] -= incr
+	return charges

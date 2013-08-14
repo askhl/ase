@@ -10,7 +10,7 @@ from os.path import join, isfile, islink
 import numpy as np
 
 from ase.data import atomic_numbers
-from ase.units import Bohr, Hartree
+from ase.units import Bohr, Hartree, fs
 from ase.data import chemical_symbols
 from ase.io.abinit import read_abinit
 from ase.calculators.calculator import FileIOCalculator, Parameters, kpts2mp, \
@@ -63,7 +63,7 @@ class Abinit(FileIOCalculator):
       calc = Abinit(label='abinit', xc='LDA', ecut=400, toldfe=1e-5)
     """
 
-    notimplemented = ['dipole', 'magmoms']
+    implemented_properties = ['energy', 'forces', 'stress', 'magmom']
     command = 'abinis < PREFIX.files > PREFIX.log'
 
     default_parameters = dict(
@@ -351,7 +351,7 @@ class Abinit(FileIOCalculator):
 
         # Energy extrapolated to zero Kelvin:
         self.results['energy'] = (etotal + efree) / 2
-        self.results['free energy'] = efree
+        self.results['free_energy'] = efree
 
         # Forces:
         for line in lines:

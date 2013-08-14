@@ -1,6 +1,7 @@
 from ase.atoms import Atoms
 from ase.quaternions import Quaternions
 from ase.parallel import paropen
+from ase.calculators.singlepoint import SinglePointCalculator
 import numpy as np
 
 """ This could be later merged with ase.io.lammps """
@@ -122,11 +123,12 @@ def read_lammps_dump(fileobj, index=-1):
 			if velocities != None: 
 				atoms.set_velocities(velocities)
 			if charges != None:
-				atoms.set_charges(charges)
+				atoms.set_initial_charges(charges)
 			info = dict(celldisp=celldisp)
 			if forces != None:
-				info['forces'] = forces
-			atoms.info = info
+				calculator = SinglePointCalculator(0.0, forces, None, None, atoms)
+				atoms.calc = calculator
+			atoms.celldisp = celldisp
 			images.append(atoms)
 
 	return images[index]

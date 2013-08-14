@@ -359,7 +359,7 @@ class Vasp(Calculator):
                 try :
                     #special_setup[self.input_params['setups'][m]] = int(m)
                     special_setups.append(int(m))
-                except:
+                except ValueError:
                     #print 'setup ' + m + ' is a groups setup'
                     continue
             #print 'special_setups' , special_setups
@@ -1031,8 +1031,16 @@ class Vasp(Calculator):
 
     def read_nbands(self):
         for line in open('OUTCAR', 'r'):
+            line = self.strip_warnings(line)
             if line.rfind('NBANDS') > -1:
                 return int(line.split()[-1])
+
+    def strip_warnings(self, line):
+        """Returns empty string instead of line from warnings in OUTCAR."""
+        if line[0] == "|":
+            return ""
+        else:
+            return line
 
     def read_convergence(self):
         """Method that checks whether a calculation has converged."""
@@ -1717,6 +1725,8 @@ class xdat2traj:
 
         # Write also the last image
         # I'm sure there is also more clever fix...
+        if step == 0:
+            self.out.write_header(self.atoms[self.calc.resort])
         scaled_pos = np.array(scaled_pos)
         self.atoms.set_scaled_positions(scaled_pos)
         d = {'positions': self.atoms.get_positions()[self.calc.resort],

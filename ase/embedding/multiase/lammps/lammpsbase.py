@@ -55,7 +55,7 @@ CALCULATION_END_MARK = '__end_of_ase_invoked_calculation__'
 class LAMMPSParameters:
 	def __init__(self, **pars):
 		self.atom_style     = pars.get('atom_style', 'full')
-		self.units          = pars.get('units')
+		self.units          = pars.get('units', 'real')
 		self.neighbor       = pars.get('neighbor')
 		self.newton         = pars.get('newton')
 		
@@ -149,9 +149,9 @@ class LAMMPSBase(Calculator):
 		""" Implement this method in subclasses"""
 		raise NotImplementedError()
 	
-	def set_charges(self, atoms, atom_types):
-		""" Implement this method in subclasses if needed"""
-		pass
+	def determine_charges(self, atoms, atom_types):
+		""" Reimplement this method in subclasses if needed"""
+		return atoms.get_initial_charges()
 	
 	def prepare_calculation(self, atoms, data):
 		""" Implement this method in subclasses if needed"""
@@ -174,7 +174,7 @@ class LAMMPSBase(Calculator):
 	
 	def calculation_required(self, atoms, quantities=None):
 		return atoms != self.atoms_after_last_calc or \
-			(atoms.get_charges() != self.atoms_after_last_calc.get_charges()).any()
+			(atoms.get_initial_charges() != self.atoms_after_last_calc.get_initial_charges()).any()
 		
 	def update(self, atoms):
 		if not self.calculation_required(atoms): return
@@ -411,9 +411,8 @@ class LAMMPSBase(Calculator):
 		improper_typeorder = add_coeff_tables('improper', impropers, warn_missing=self.debug)
 		
 		# Atoms
-		self.set_charges(atoms, atom_types)
+		charges = self.determine_charges(atoms, atom_types)
 		atom_typeids = [atom_actualtype_order.index(at)+1 for at in atom_actualtypes]
-		charges = self.atoms.get_charges()
 		positions = self.prism.vector_to_lammps(self.atoms.positions)
 		positions = self.from_ase_units(positions, 'distance')
 		columns = [atom_typeids, charges, positions[:,0], positions[:,1], positions[:,2]]
@@ -580,13 +579,13 @@ class LAMMPSBase(Calculator):
 		dump = read_lammps_dump(self.lammps_trj_file)
 		
 		rotate = self.prism.vector_to_ase
-		self.forces = rotate(self.to_ase_units(dump.info['forces'], 'force'))
+		self.forces = rotate(self.to_ase_units(dump.get_forces(), 'force'))
 		
 		if update_positions:
-			dump.positions -= dump.info['celldisp']
+			dump.positions -= dump.celldisp
 			
 			self.atoms.positions = rotate(self.to_ase_units(dump.positions, 'distance'))
-			self.atoms.set_velocities(rotate(self.to_ase_units(dump.get_velocities(), 'velocity')))			
+			self.atoms.set_velocities(rotate(self.to_ase_units(dump.get_velocities(), 'velocity')))
 			if np.isnan(self.atoms.positions).any():
 					raise RuntimeError('NaN detected in atomic coordinates!')
 				
@@ -594,7 +593,7 @@ class LAMMPSBase(Calculator):
 				self.atoms.set_cell(self.prism.vector_to_ase(dump.cell))
 				
 		if self.update_charges:
-			self.atoms.set_charges(dump.get_charges())
+			self.atoms.set_initial_charges(dump.get_initial_charges())
 			
 		self.atoms_after_last_calc = self.atoms.copy()
 	

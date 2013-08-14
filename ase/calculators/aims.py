@@ -114,7 +114,7 @@ list_keys = [
 
 class Aims(FileIOCalculator):
     command = 'aims.version.serial.x > aims.out'
-    notimplemented = ['magmoms', 'magmom']
+    implemented_properties = ['energy', 'forces', 'stress', 'dipole']
 
     def __init__(self, restart=None, ignore_bad_restart_file=False,
                  label=os.curdir, atoms=None, cubes=None, **kwargs):
@@ -311,7 +311,7 @@ class Aims(FileIOCalculator):
                 E0 = float(line.split()[5])
             elif line.rfind('Total energy uncorrected') > -1:
                 F = float(line.split()[5])
-        self.results['free energy'] = F
+        self.results['free_energy'] = F
         self.results['energy'] = E0
 
     def read_forces(self):

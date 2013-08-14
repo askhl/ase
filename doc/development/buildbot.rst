@@ -17,8 +17,8 @@ in which case ``buildmaster`` will schedule the given builder to switch
 periodically between the ``buildslaves``.
 At the time of writing (2012) buildbot_ does not offer satisfactory security
 mechanisms, and due to clear text passwords stored/transferred both on
-``buildmaster`` and ``buildslaves`` external security measures like firewall or
-ssh/stunnel should be used.
+``buildmaster`` and ``buildslaves`` external security measures like firewall,
+proxy, ssh/stunnel should be used.
 
 The sections below describe the configuration of ``buildmaster`` and ``buildslaves``.
 
@@ -48,14 +48,15 @@ Proceed with buildbot configuration:
 
     buildbot create-master --relocatable python-ase
 
-* reconfigure the master with :svn:`doc/devel/development/master.cfg`:
+* reconfigure the master with :svn:`doc/development/master.cfg`::
 
     cp master.cfg python-ase
     buildbot checkconfig python-ase/master.cfg
     buildbot start python-ase
 
 * consider setting up a crontab which starts ``buildmaster``
-  after the server reboot::
+  after the server reboot (this solution is not reliable,
+  deploy rather init scripts - see below)::
 
     # run every 5 minutes
     */5 * * * * sh ~/python-ase-restart.sh
@@ -76,6 +77,30 @@ Proceed with buildbot configuration:
         fi
     fi
 
+* or create a system V init script under ``/etc/init.d``
+
+  .. literalinclude:: python-ase-buildmaster
+
+  The service is added with::
+
+    chkconfig --add python-ase-buildmaster
+
+  started with::
+
+    service python-ase-buildmaster start
+
+  end enabled for boot time with::
+
+    chkconfig python-ase-buildmaster on
+
+  See also an example of ``systemd`` script in the section below.
+
+* consider protecting the ``buildmaster`` web interface by, e.g.
+  apache reverse proxy (http://httpd.apache.org/docs/2.4/mod/mod_proxy.html).
+  The basic configuration file may look like
+
+  .. literalinclude:: buildbot.conf
+
 Installation and configuration of buildslaves
 =============================================
 
@@ -92,6 +117,30 @@ Install with::
 
   yum install buildbot-slave
 
+You can configure ``systemd`` service by creating
+:file:`python-ase-fedora-18-x86_64-gcc-2.7.service` file
+under ``/usr/lib/systemd/system``.
+
+.. literalinclude:: python-ase-fedora-18-x86_64-gcc-2.7.service
+
+``python-ase-fedora+18+x86_64+gcc+2.7-start.sh`` simply exports
+the necessary environment variables (if needed) and starts ``buildslave``
+(use the full path), e.g.::
+
+   #!/bin/sh
+   bot=/home/buildslave-username/python-ase-fedora+18+x86_64+gcc+2.7
+   buildslave start $bot
+
+Choose ``User`` and ``Group`` under which ``buildslave`` will be running.
+The service is started with::
+
+  systemctl start python-ase-fedora-18-x86_64-gcc-2.7.service
+
+In order to force the service to be started at boot time create a link::
+
+  cd /etc/systemd/system/multi-user.target.wants
+  ln -s /usr/lib/systemd/system/python-ase-fedora-18-x86_64-gcc-2.7.service .
+
 OS X
 ++++
 
@@ -107,7 +156,7 @@ Configure a virtualenv, and then::
 RHEL5
 +++++
 
-Install recent ``python-setuptools` to get ``easy_install`::
+Install recent ``python-setuptools`` in order to get ``easy_install``::
 
   mkdir ~/buildbot-slave-el5
   export PATH=$HOME/buildbot-slave-el5:${PATH}
@@ -124,7 +173,7 @@ then::
 RHEL6
 +++++
 
-Install ``build-slave` and dependencies::
+Install ``build-slave`` and dependencies::
 
   mkdir ~/buildbot-slave-el6
   export PATH=$HOME/buildbot-slave-el6:${PATH}
@@ -136,7 +185,7 @@ Configuration
 
 After having installed the buildbot create a name which will identify
 your ``buildslave``. Obtain the first part of the name for your ``buildslave`` by
-running :svn:`doc/devel/development/master.cfg`::
+running :svn:`doc/development/master.cfg`::
 
   python master.cfg
 
@@ -167,14 +216,14 @@ describe your ``buildslave`` configuration relevant for the builder process
 in the ``info`` file.
 
 Note that before starting the slave you need to perform an temporary
-svn checkout of ASE in order to accept the certificate permenently.
+svn checkout of ASE in order to accept the certificate permanently.
 
 Start the ``buildslave`` with::
 
   buildslave start python-ase-redhat+6+x86_64+gcc+2.6
 
-Consider a crontab job for it as described in the above configuration
-of ``buildmaster``.
+Don't forget to configure a crontab job or a service as described in the
+previous sections.
 
 By default all slaves run the continuous integration for the trunk.
 If you prefer your ``buildslave`` works also on one of the branches, write

@@ -3,37 +3,18 @@ from tempfile import NamedTemporaryFile
 import numpy as np
 import shutil, os
 
-def get_element_order(ff_file):
-	f = open(ff_file)
-	
-	order = []
-	for line in f:
-		fields = line.strip().split()
-		if len(fields) == 9 and fields[0][0].isupper():
-			order.append(fields[0])
-	return order
-
 class ReaxFF(LAMMPSBase):
 	
 	def __init__(self, ff_file_path, label='reaxff', specorder=None,
-		implementation='C', update_charges=True, save_bond_orders=False, debug_energy=False, **kwargs):
+		update_charges=True, save_bond_orders=False, debug_energy=False, **kwargs):
 		
 		LAMMPSBase.__init__(self, label, update_charges = update_charges, **kwargs)
 		
-		
 		self.parameters.atom_style = 'charge'
-		self.parameters.pair_style = 'reax'
-		if implementation == 'C':
-			self.parameters.pair_style += '/c NULL'
-			self.parameters.extra_cmds.append('fix qeq all qeq/reax 1 0.0 10.0 1.0e-6 reax/c')
-		
+		self.parameters.pair_style = 'reax/c NULL'
+		self.parameters.extra_cmds.append('fix qeq all qeq/reax 1 0.0 10.0 1.0e-6 reax/c')
 		self.parameters.units      = 'real'
-		
-		if not specorder:
-			self.specorder = get_element_order(ff_file_path)
-		else:
-			self.specorder = specorder
-		
+				
 		self.ff_file = ff_file_path
 		self.ff_data = FFData()
 		
@@ -57,8 +38,7 @@ class ReaxFF(LAMMPSBase):
 	
 	def prepare_calculation(self, atoms, data):
 		typeorder = data.atom_typeorder
-		element_indices = [str(self.specorder.index(el)+1) for el in typeorder]
-		self.parameters.pair_coeffs = ['* * %s ' % (self.ff_file) + ' '.join(element_indices)]
+		self.parameters.pair_coeffs = ['* * %s ' % (self.ff_file) + ' '.join(typeorder)]
 	
 	
 	def set_dumpfreq(self, freq):

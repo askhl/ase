@@ -164,7 +164,7 @@ def calculator_factory(name, **kwargs):
 
     if name == 'elk':
         from ase.calculators.elk import ELK
-        return CalculatorFactory(ELK, 'ELK', 'dir', **kwargs)
+        return CalculatorFactory(ELK, 'ELK', 'label', **kwargs)
 
     if name == 'fleur':
         from ase.calculators.fleur import FLEUR
@@ -191,7 +191,7 @@ def calculator_factory(name, **kwargs):
     module = __import__('ase.calculators.' + name, {}, None, [classname])
     Class = getattr(module, classname)
 
-    if name in ['emt', 'gaussian', 'lammps', 'lj', 'mopac', 'morse']:
+    if name in ['emt', 'gaussian', 'lammpsrun', 'lj', 'mopac', 'morse']:
         kpts = 'no k-points'
     else:
         kpts = None

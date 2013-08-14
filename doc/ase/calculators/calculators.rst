@@ -53,7 +53,7 @@ The calculators can be divided in three groups:
    have Python wrappers in the ASE package, but the actual
    FORTRAN/C/C++ codes are not part of ASE.
 
-3) Pure python implementations included in the ASE package: EMT,
+3) Pure python implementations included in the ASE package: EMT, EAM,
    Lennard-Jones and Morse.
 
 ======================  ===========================================
@@ -63,9 +63,9 @@ Asap_                   Highly efficient EMT code
 GPAW_                   Real-space/plane-wave/LCAO PAW code
 Hotbit_                 DFT based tight binding
 :mod:`abinit`           Plane-wave pseudopotential code
-:mod:`castep`           Plane-wave pseodopotential code
+:mod:`castep`           Plane-wave pseudopotential code
 :mod:`dftb`             DFT based tight binding
-eam                     Embedded Atom Method
+:mod:`eam`              Embedded Atom Method
 elk                     Full Potential LAPW code
 :mod:`exciting`         Full Potential LAPW code
 :mod:`FHI-aims`         Numeric atomic orbital, full potential code
@@ -103,7 +103,7 @@ Calculator keywords
 Example for a hypothetical ABC calculator:
 
 .. class:: ABC(restart=None, ignore_bad_restart_file=False, label=None,
-               atoms=None, parameters=None, command='abc > PREFIX.abc',
+	       atoms=None, parameters=None, command='abc > PREFIX.abc',
 	       xc=None, kpts=[1, 1, 1], smearing=None,
 	       charge=0.0, nbands=None, **kwargs)
 
@@ -113,7 +113,7 @@ Example for a hypothetical ABC calculator:
        Prefix for restart file.  May contain a directory.  Default
        is None: don't restart.
    ignore_bad_restart_file: bool
-       Ignore broken or missing restart file.  By defauls, it is an
+       Ignore broken or missing restart file.  By default, it is an
        error if the restart file is missing or broken.
    label: str
        Name used for all files.  May contain a directory.
@@ -136,17 +136,17 @@ Example for a hypothetical ABC calculator:
        * ``(n1,n2,n3,'gamma')``: Shifted Monkhorst-Pack grid that includes
 	 `\Gamma`
        * ``[(k11,k12,k13),(k21,k22,k23),...]``: Explicit list in units of the
-         reciprocal lattice vectors
+	 reciprocal lattice vectors
        * ``kpts=3.5``: `\vec k`-point density as in 3.5 `\vec k`-points per
-         Å\ `^{-1}`.
+	 Å\ `^{-1}`.
    smearing: tuple
        The smearing of occupation numbers.  Must be a tuple:
 
        * ``('Fermi-Dirac', width)``
        * ``('Gaussian', width)``
        * ``('Methfessel-Paxton', width, n)``, where `n` is the order
-         (`n=0` is the same as ``'Gaussian'``)
-       
+	 (`n=0` is the same as ``'Gaussian'``)
+
        Lower-case names are also allowed.  The ``width`` parameter is
        given in eV units.
    charge: float
@@ -170,6 +170,7 @@ the :meth:`set` method:
 .. toctree::
    :hidden:
 
+   eam
    emt
    abinit
    castep
@@ -191,7 +192,7 @@ QMMM
 ====
 
 For QMMM caculations, see :mod:`ase_qmmm_manyqm`.
-  
+
 
 Calculator interface
 ====================

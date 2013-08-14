@@ -1,5 +1,6 @@
 from lammpsbase import LAMMPSBase, SequenceType, FFData
 import typing
+import numpy as np
 
 
 class ClayFF(LAMMPSBase):
@@ -28,8 +29,8 @@ class ClayFF(LAMMPSBase):
 		self.type_resolver.resolve_atoms(atoms)
 		return atoms.info['atom_types']
 	
-	def set_charges(self, atoms, atom_types):
-		atoms.set_charges([charges[tp] for tp in atom_types])
+	def determine_charges(self, atoms, atom_types):
+		return np.array([charges[tp] for tp in atom_types])
 
 #sym  q      D0        R0
 nonbond_data = '''

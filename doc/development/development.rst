@@ -38,11 +38,11 @@ Use this command::
 
   htpasswd -nm <your-desired-user-name>
 
-and type a good password twice.  The encrypted password will be
-printed on the screen.
+and type a `good password <http://xkcd.com/936/>`__ twice.  The
+encrypted password will be printed on the screen.
 
-If you don't have the ``htpasswd`` command, then use Python:
+Alternatively, you can use::
 
->>> import crypt
->>> passwd = '<your-password>'
->>> print crypt.crypt(passwd, passwd)
+  openssl passwd -apr1
+
+followed by your password (twice).

@@ -4,6 +4,7 @@ import read_gromacs_params
 import typing, oplsaatypes
 import warnings
 import os
+import numpy as np
 
 class OPLSAA(LAMMPSBase):
 	
@@ -38,8 +39,8 @@ class OPLSAA(LAMMPSBase):
 		self.type_resolver.resolve_atoms(atoms)
 		return atoms.info['atom_types']
 	
-	def set_charges(self, atoms, atom_types):
-		charges = atoms.get_charges()
+	def determine_charges(self, atoms, atom_types):
+		charges = np.zeros(len(atoms))
 		for i in range(len(atoms)):
 			charges[i] = self.charges[atom_types[i]]
-		atoms.set_charges(charges)
+		return charges

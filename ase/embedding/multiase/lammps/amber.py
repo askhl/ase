@@ -29,5 +29,5 @@ class AMBER(LAMMPSBase):
 		return atoms.info['atom_types']
 		
 	def prepare_calculation(self, atoms, data):
-		if (atoms.get_charges() == 0).all():
+		if (atoms.get_initial_charges() == 0).all():
 			warnings.warn("No partial charges set! There won't be any Coulomb interactions.")
