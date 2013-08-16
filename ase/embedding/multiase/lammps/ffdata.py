@@ -1,5 +1,13 @@
 
 class FFData:
+	''' Store force field parameters. Parameters are stored in (object type), (value) pairs
+	    in different categories based on different types of interactions (nonbonded, bond, angle...)
+	    The object type is a sequence of atom types in the object. These atom types are "actual types"
+	    for the given category. For an explanation on "formal types" and "actual types", see
+	    http://pubs.acs.org/doi/abs/10.1021/jp980939v
+	    For example, there might be two carbon (formal) types 'C4o' and 'C4n' which both have an
+	    actual angle type 'C4'.
+	'''
 	def __init__(self):
 		self.atom = {}
 		self.bond = {}
@@ -7,11 +15,11 @@ class FFData:
 		self.dihedral = {}
 		self.improper = {}
 		self.equivalence = {}
-		self.class2 = False
+		self.class2 = False    # class2 impropers have to be treated differently
 		
-	def add(self, group, type, title, values):
-		groupdict = getattr(self, group)
-		d = groupdict.setdefault(type, {})
+	def add(self, category, type, title, values):
+		categorydict = getattr(self, category)
+		d = categorydict.setdefault(type, {})
 		d[title] = values
 		
 	def add_equivalence(self, formal_type, **actual_types):
@@ -31,40 +39,49 @@ class FFData:
 		self.improper.update(other.improper)
 		self.equivalence.update(other.equivalence)
 
-	def find(self, group, indices, type):
-		actualtype = self.get_actual_type(group, type)
-		groupdict = getattr(self, group)
+	def find(self, category, indices, type):
+		''' Check that parameters are available for a given sequence of formal types,
+		    and return possibly reordered atom indices and the actual object type (a
+		    list of actual atom types for interaction given by category).
+		    Arguments:
+		    * category - 'atom', 'bond', 'angle', 'dihedral' or 'improper'
+		    * indices - the atom indices to be reordered if necessary
+		    * type - a list of formal types of each atom
+		'''
+		actualtype = self.get_actual_type(category, type)
+		categorydict = getattr(self, category)
 		for ind, tp in actualtype.variations(indices):
-			if tp in groupdict:
+			if tp in categorydict:
 				return ind, tp
 		
-		if group in ('atom', 'bond', 'angle'): 
+		if category in ('atom', 'bond', 'angle'): 
 			return None, actualtype
 		
 		# Test for wildcard types like * c c *
 		for ind, tp in actualtype.variations(indices):
-			for key in groupdict:
+			for key in categorydict:
 				if key.match(tp):
 					return ind, key
 		return None, actualtype
 		
-	def get_params(self, group, type):
-		groupdict = getattr(self, group)
-		return groupdict[type]
+	def get_params(self, category, type):
+		''' Return all parameter tables for a given type of the given category '''
+		categorydict = getattr(self, category)
+		return categorydict[type]
 		
-	def available_tables(self, group):
+	def available_tables(self, category):
 		d = {}
-		for entry in getattr(self, group).values():
+		for entry in getattr(self, category).values():
 			d.update((name, len(params)) for name, params in entry.items())
 		return d.items()
 	
-	def get_actual_type(self, group, type):
+	def get_actual_type(self, category, type):
 		if not self.equivalence: return type
-		if group == 'atom':
+		if category == 'atom':
 			return self.equivalence[type]['atom']
 		elif type.__class__ == SequenceType:
 			try:
-				actuals = [self.equivalence[tp][group] for tp in type.atom_types]
+				actuals = [self.equivalence[tp][category] for tp in type.atom_types]
 				return SequenceType(actuals)
 			except KeyError:
 				# Silently ignore
@@ -81,6 +98,7 @@ class FFData:
 		
 
 class SequenceType:
+	''' Defines a bond, angle or dihedral type by a sequence of atom types '''
 	def __init__(self, atom_types, wildcard=None):
 		self.atom_types = list(atom_types)
 		if wildcard:
@@ -113,6 +131,7 @@ class SequenceType:
 		return repr(self.atom_types)
 
 class ImproperType:
+	''' Like SequenceType, but for dihedrals that have a different symmetry '''
 	def __init__(self, atom_types=None, central_type=None, other_types=None, class2=False):
 		if central_type and other_types:
 			self.central = central_type

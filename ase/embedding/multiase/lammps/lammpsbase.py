@@ -10,42 +10,7 @@ from ffdata import FFData, SequenceType, ImproperType
 from ase.embedding.multiase.lammps.io.lammps import read_lammps_dump
 import warnings
 
-try:
-	from itertools import combinations, permutations
-except:
-	# itertools.combinations and itertools.permutations are not in python 2.4
-	def permutations(iterable, r=None):
-		# permutations('ABCD', 2) --> AB AC AD BA BC BD CA CB CD DA DB DC
-		# permutations(range(3)) --> 012 021 102 120 201 210
-		pool = tuple(iterable)
-		n = len(pool)
-		if r is None: r = n
-		if r > n:
-			return
-		indices = range(n)
-		cycles = range(n, n-r, -1)
-		yield tuple(pool[i] for i in indices[:r])
-		while n:
-			for i in reversed(range(r)):
-				cycles[i] -= 1
-				if cycles[i] == 0:
-					indices[i:] = indices[i+1:] + indices[i:i+1]
-					cycles[i] = n - i
-				else:
-					j = cycles[i]
-					indices[i], indices[-j] = indices[-j], indices[i]
-					yield tuple(pool[i] for i in indices[:r])
-					break
-			else:
-				return
-				
-	def combinations(iterable, r):
-		pool = tuple(iterable)
-		n = len(pool)
-		for indices in permutations(range(n), r):
-			if sorted(indices) == list(indices):
-				yield tuple(pool[i] for i in indices)
-
+from itertools import combinations, permutations
 
 __ALL__ = ['LAMMPSBase']
 
@@ -282,20 +247,10 @@ class LAMMPSBase(Calculator):
 	def prepare_lammps_io(self):
 		label = '%s%06d' % (self.label, self.calls)
 		
-		# In python 2.4 the delete kwarg doesn't exist
-		#args = dict(dir=self.tmp_dir, delete=(not self.debug))
-		#self.lammps_trj_file = NamedTemporaryFile(mode='r', prefix='trj_'+label, **args)
-		#self.lammps_inputdata_file = NamedTemporaryFile(prefix='data_'+label, **args)
+		args = dict(dir=self.tmp_dir, delete=(not self.debug))
+		self.lammps_trj_file = NamedTemporaryFile(mode='r', prefix='trj_'+label, **args)
+		self.lammps_inputdata_file = NamedTemporaryFile(prefix='data_'+label, **args)
 		
-		if self.debug:
-			self.lammps_trj_file = open(os.path.join(self.tmp_dir, 'trj_'+label), 'w')
-			self.lammps_trj_file.close()
-			self.lammps_trj_file = open(self.lammps_trj_file.name)
-			self.lammps_inputdata_file = open(os.path.join(self.tmp_dir, 'data_'+label), 'w')
-		else:
-			self.lammps_trj_file = NamedTemporaryFile(mode='r', prefix='trj_'+label, dir=self.tmp_dir)
-			self.lammps_inputdata_file = NamedTemporaryFile(prefix='data_'+label, dir=self.tmp_dir)
-			
 		return label
 	
 	
@@ -323,25 +278,32 @@ class LAMMPSBase(Calculator):
 		status_message('Detecting atom types...')
 		atom_types = self.atom_types(atoms)
 		status_done()
-		atom_typeorder = list(set(atom_types))
-		atom_actualtypes = [ff_data.get_actual_type('atom', tp) for tp in atom_types]
-		atom_actualtype_order = [ff_data.get_actual_type('atom', tp) for tp in atom_typeorder]
 		
-		def identify_objects(objects, group):
+		# Note: while often there is 1-1 mapping between formal atom types and
+		# the nonbonded (actual) types, this is not the case for all FF's.
+		# In FFData, the category 'atom' has data for each nonbonded (actual) type, instead of
+		# for each formal type like one might think.
+		atom_typeorder = list(set(atom_types))
+		nonbonded_types = [ff_data.get_actual_type('atom', tp) for tp in atom_types]
+		nonbonded_typeorder = [ff_data.get_actual_type('atom', tp) for tp in atom_typeorder]
+		
+		# A helper to run FFData.find() on a given set of objects of a given category ('bond', 'angle', etc...)
+		# If parameters in FFData are not found, discard the object.
+		def identify_objects(objects, category):
 			result = []
 			discarded_objects = set()
 			for indices in objects:
-				if group != 'improper':
+				if category != 'improper':
 					type = SequenceType([atom_types[i] for i in indices])
 				else:
 					a, c, b, d = (atom_types[ind] for ind in indices)
 					type = ImproperType(central_type=a, other_types=(c,b,d))
 					
-				actual_indices, actual_type = ff_data.find(group, indices, type)
+				actual_indices, actual_type = ff_data.find(category, indices, type)
 				if actual_indices == None:
 					discarded_objects.add(actual_type)
 					continue
-				if group == 'improper' and ff_data.class2:
+				if category == 'improper' and ff_data.class2:
 					actual_indices = [actual_indices[1], actual_indices[0], actual_indices[2], actual_indices[3]]
 				result.append(dict(indices=actual_indices, type=actual_type))
 				
@@ -371,19 +333,20 @@ class LAMMPSBase(Calculator):
 			status_done()
 		else: impropers = []
 		
-		
-		# Coeffs	
-		def add_coeff_tables(param_group, objects, typeorder=None, warn_missing=True):
+		# Compile a list of force field parameters for a set of objects of a given category
+		# each set of parameters is added to table as a list. The return value is an ordered
+		# list of all types present in objects.
+		def add_coeff_tables(category, objects, typeorder=None, warn_missing=True):
 			if not objects: return
 			if typeorder:
 				used_types = typeorder
 			else:
 				used_types = set(object['type'] for object in objects)
 			
-			available_tables = ff_data.available_tables(param_group)
+			available_tables = ff_data.available_tables(category)
 			new_tables = {}
 			for type in used_types:
-				params = ff_data.get_params(param_group, type)
+				params = ff_data.get_params(category, type)
 				for title, ncols in available_tables:
 					try:
 						values = params[title]
@@ -399,11 +362,11 @@ class LAMMPSBase(Calculator):
 			return list(used_types)
 		
 		# Add masses to ff_data
-		masses = dict(zip(atom_actualtypes, self.atoms.get_masses()))
-		for type in atom_actualtype_order:
+		masses = dict(zip(nonbonded_types, self.atoms.get_masses()))
+		for type in nonbonded_typeorder:
 			ff_data.add('atom', type, 'Masses', [masses[type]])
 			
-		add_coeff_tables('atom', atom_actualtypes, atom_actualtype_order)
+		add_coeff_tables('atom', nonbonded_types, nonbonded_typeorder)
 		
 		bond_typeorder     = add_coeff_tables('bond', bonds, warn_missing=self.debug)
 		angle_typeorder    = add_coeff_tables('angle', angles, warn_missing=self.debug)
@@ -412,7 +375,7 @@ class LAMMPSBase(Calculator):
 		
 		# Atoms
 		charges = self.determine_charges(atoms, atom_types)
-		atom_typeids = [atom_actualtype_order.index(at)+1 for at in atom_actualtypes]
+		atom_typeids = [nonbonded_typeorder.index(at)+1 for at in nonbonded_types]
 		positions = self.prism.vector_to_lammps(self.atoms.positions)
 		positions = self.from_ase_units(positions, 'distance')
 		columns = [atom_typeids, charges, positions[:,0], positions[:,1], positions[:,2]]
@@ -607,6 +570,7 @@ class LAMMPSBase(Calculator):
 from lammpspython import lammps
 
 class LammpsLibrary:
+	''' Experimental implementation that uses the library interface, to replace LammpsProcess '''
 	def __init__(self, log=False):
 		self.lammps = None
 		self.inlog = None
@@ -619,9 +583,7 @@ class LammpsLibrary:
 		if self.log == True:
 			# Save LAMMPS input
 			
-			# in python 2.4 the delete=False option doesn't exist
-			#self.inlog  = NamedTemporaryFile(prefix='in_'+filelabel, dir=tmp_dir, delete=False)
-			self.inlog  = open(os.path.join(tmp_dir, 'in_'+filelabel), 'w')
+			self.inlog  = NamedTemporaryFile(prefix='in_'+filelabel, dir=tmp_dir, delete=False)
 
 	def running(self):
 		return self.lammps != None
@@ -691,11 +653,8 @@ class LammpsProcess:
 		if self.log == True:
 			# Save LAMMPS input and output for reference
 			
-			# in python 2.4 the delete=False option doesn't exist
-			#self.inlog  = NamedTemporaryFile(prefix='in_'+filelabel, dir=tmp_dir, delete=False)
-			#self.outlog = NamedTemporaryFile(prefix='log_'+filelabel, dir=tmp_dir, delete=False)
-			self.inlog  = open(os.path.join(tmp_dir, 'in_'+filelabel), 'w')
-			self.outlog = open(os.path.join(tmp_dir, 'out_'+filelabel), 'w')
+			self.inlog  = NamedTemporaryFile(prefix='in_'+filelabel, dir=tmp_dir, delete=False)
+			self.outlog = NamedTemporaryFile(prefix='log_'+filelabel, dir=tmp_dir, delete=False)
 		
 		try:
 			return Popen(lammps_cmd_line,
