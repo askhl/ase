@@ -7,12 +7,11 @@ import numpy as np
 import unitconversion
 from bonds import Bonds
 from ffdata import FFData, SequenceType, ImproperType
-from ase.embedding.multiase.lammps.io.lammps import read_lammps_dump
+from ase.io.lammpsrun import read_lammps_dump
+from lammpspython import lammps
 import warnings
 
 from itertools import combinations, permutations
-
-__ALL__ = ['LAMMPSBase']
 
 # "End mark" used to indicate that the calculation is done
 CALCULATION_END_MARK = '__end_of_ase_invoked_calculation__'
@@ -80,8 +79,8 @@ class LAMMPSBase(Calculator):
 		self.force_triclinic = force_triclinic
 		self.keep_alive = keep_alive
 		self.debug = debug           
-		self.lammps_process = LammpsProcess(log=debug, lammps_command=lammps_command, output_hack=output_hack)
-		#self.lammps_process = LammpsLibrary(log=debug)
+		#self.lammps_process = LammpsProcess(log=debug, lammps_command=lammps_command, output_hack=output_hack)
+		self.lammps_process = LammpsLibrary(log=debug)
 		self.calls = 0
 		
 		self._custom_thermo_args = [
@@ -103,7 +102,7 @@ class LAMMPSBase(Calculator):
 			if not os.path.isdir(self.tmp_dir):
 				os.mkdir(self.tmp_dir, 0755)
 		
-		if debug:
+		if self.debug:
 			print 'LAMMPS (label: %s) running at %s' % (self.label, self.tmp_dir)
 	
 	def __del__(self):
@@ -539,13 +538,13 @@ class LAMMPSBase(Calculator):
 
 
 	def read_lammps_trj(self, update_positions=False, update_cell=False):
-		dump = read_lammps_dump(self.lammps_trj_file)
+		dump = read_lammps_dump(self.lammps_trj_file, order=False)
 		
 		rotate = self.prism.vector_to_ase
 		self.forces = rotate(self.to_ase_units(dump.get_forces(), 'force'))
 		
 		if update_positions:
-			dump.positions -= dump.celldisp
+			dump.positions -= dump.get_celldisp()
 			
 			self.atoms.positions = rotate(self.to_ase_units(dump.positions, 'distance'))
 			self.atoms.set_velocities(rotate(self.to_ase_units(dump.get_velocities(), 'velocity')))
@@ -567,10 +566,9 @@ class LAMMPSBase(Calculator):
 	def from_ase_units(self, value, quantity):
 		return unitconversion.convert(value, quantity, 'ASE', self.parameters.units)
 
-from lammpspython import lammps
 
 class LammpsLibrary:
-	''' Experimental implementation that uses the library interface, to replace LammpsProcess '''
+	''' Handle to the LAMMPS library interface, to replace LammpsProcess '''
 	def __init__(self, log=False):
 		self.lammps = None
 		self.inlog = None
@@ -578,48 +576,47 @@ class LammpsLibrary:
 	
 	def start(self, tmp_dir, filelabel=''):
 		if self.lammps: self.lammps.close()
-		self.lammps = lammps.lammps(cmdargs=['-screen', 'none'])
+		close_logs()
 		
 		if self.log == True:
-			# Save LAMMPS input
-			
+			outlog = NamedTemporaryFile(prefix='log_'+filelabel, dir=tmp_dir, delete=False)
 			self.inlog  = NamedTemporaryFile(prefix='in_'+filelabel, dir=tmp_dir, delete=False)
+			outlogpath = outlog.name
+			outlog.close()
+		else:
+			outlogpath = 'none'
+		
+		self.lammps = lammps.lammps(cmdargs=['-screen', outlogpath, '-log', 'none'])
 
 	def running(self):
 		return self.lammps != None
 	
-	def poll(self):
-		return None
-	
-	def terminate(self):
-		pass
-		
 	def write(self, command):
 		if self.inlog: self.inlog.write(command)
 		self.lammps.command(command)
 		
-	def flush(self): pass
-	
 	def close_logs(self):
 		if self.inlog: self.inlog.close()
 		self.inlog = None
 		
 	def get_thermo(self, key):
-		stress_components = ['pxx','pyy','pzz', 'pyz','pxz','pxy']
+		stress_components = ['pxx', 'pyy', 'pzz', 'pxy', 'pxz', 'pyz']
 		if key in stress_components:
-			stress = self.lammps.extract_compute('thermo_%s' % key, 0, 2)
-			print stress[0]
-			#return stress[stress_components.index(key)]
-			return None
-		return self.lammps.extract_compute('thermo_%s' % key, 0, 0)
-		
+			stress = self.lammps.extract_compute('thermo_press', 0, 1)
+			return stress[stress_components.index(key)]
+		else:
+			return self.lammps.extract_compute('thermo_%s' % key, 0, 0)
+
+	def poll(self): return None
+	def flush(self): pass
+	def terminate(self): pass
 	def read_lammps_output(self): pass
 	
-	
+
 class LammpsProcess:
 	""" A class to handle the lammps process and read thermo output. There are
-		sometimes errors related to the communication with the process and it
-		is advisable to restart lammps after every calculation.
+		sometimes errors related to the communication with the process and it is
+		recommended to use LammpsLibrary instead.
 	"""
         def __init__(self, log=False, lammps_command=None, 
 		     output_hack=False):
@@ -652,7 +649,6 @@ class LammpsProcess:
 			lammps_cmd_line += ['-log', 'none'] #, '-screen', 'none'] 
 		if self.log == True:
 			# Save LAMMPS input and output for reference
-			
 			self.inlog  = NamedTemporaryFile(prefix='in_'+filelabel, dir=tmp_dir, delete=False)
 			self.outlog = NamedTemporaryFile(prefix='log_'+filelabel, dir=tmp_dir, delete=False)
 		

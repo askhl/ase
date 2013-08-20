@@ -34,6 +34,7 @@ def read_lammps_dump(fileobj, index=-1, order=True):
             positions = []
             scaled_positions = []
             velocities = []
+            charges = []
             forces = []
             quaternions = []
 
@@ -69,17 +70,11 @@ def read_lammps_dump(fileobj, index=-1, order=True):
                     yz = tilt[2]
             else:
                 xy = xz = yz = 0
-            xhilo = (hi[0] - lo[0]) - (xy**2)**0.5 - (xz**2)**0.5
-            yhilo = (hi[1] - lo[1]) - (yz**2)**0.5
+            xhilo = (hi[0] - lo[0]) - abs(xy) - abs(xz)
+            yhilo = (hi[1] - lo[1]) - abs(yz)
             zhilo = (hi[2] - lo[2])
-            if xy < 0:
-                if xz < 0:
-                    celldispx = lo[0] - xy - xz
-                else:
-                    celldispx = lo[0] - xy
-            else:
-                celldispx = lo[0]
-            celldispy = lo[1]
+            celldispx = lo[0] - min(0, xy) - min(0, xz)
+            celldispy = lo[1] - min(0, yz)
             celldispz = lo[2]
 
             cell = [[xhilo, 0, 0], [xy, yhilo, 0], [xz, yz, zhilo]]
@@ -105,6 +100,7 @@ def read_lammps_dump(fileobj, index=-1, order=True):
                 fields = line.split()
                 id.append(int(fields[atom_attributes['id']]))
                 types.append(int(fields[atom_attributes['type']]))
+                charges.append(float(fields[atom_attributes['q']]))
                 add_quantity(fields, positions, ['x', 'y', 'z'])
                 add_quantity(fields, scaled_positions, ['xs', 'ys', 'zs'])
                 add_quantity(fields, velocities, ['vx', 'vy', 'vz'])
@@ -144,6 +140,8 @@ def read_lammps_dump(fileobj, index=-1, order=True):
 
             if len(velocities):
                 images[-1].set_velocities(velocities)
+            if len(charges):
+                images[-1].set_initial_charges(q)
             if len(forces):
                 calculator = SinglePointCalculator(0.0, forces,
                                                    None, None, images[-1])
