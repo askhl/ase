@@ -32,15 +32,15 @@ type: opls_140
 	
 type: opls_141
 	! alkene C (R2-C=) 
-	template: [C (^H)(^H)(C)]
+	template: [C (C)(C)(C)]
 	
 type: opls_142
 	! alkene C (RH-C=) 
-	template: [C (^H)(^H)(H)]
+	template: [C (C)(C)(H)]
 	
  type: opls_143
 	! alkene C (H2-C=) 
-	template: [C (^H)(H)(H)]
+	template: [C (C)(H)(H)]
 	
 type: opls_144
 	! alkene H (H-C=)
@@ -174,6 +174,30 @@ type: opls_184
 	template: (C (O(C))(C)(C)(C))
  opls_185    1.00800  ; H(COR): alpha H ether
  
+type: opls_235
+  ! C=O in amide, dmf, peptide bond
+  template: [C [O] (N)(CH)]
+  
+type: opls_236
+  ! O: C=O in amide.   Acyl R on C in amide is neutral -
+  template: [O [C (N) (CH)]]
+  
+type: opls_237
+  ! N: primary amide.  use alkane parameters.
+  template: [N (H)(H)[C [O] (CH)]]
+  
+type: opls_238
+	! N: secondary amide, peptide bond (see #279 for formyl H)
+	template: [N (C)(H)[C [O] (CH)]]
+	
+type: opls_239
+	! N: tertiary amide
+	template: [N (C)(C)[C [O] (CH)]]
+
+type: opls_240
+  ! H on N: primary amide
+  template: [H [N (H) [C[O](CH)]]]
+ 
  """
  
 """
@@ -229,12 +253,9 @@ type: opls_184
  opls_232   12.01100  ; C: C=O in benzaldehyde,acetophenone (CH)
  opls_233   12.01100  ; C: C=O in acetophenone (CMe)
  opls_234   12.01100  ; C: C=O in benzamide
- opls_235   12.01100  ; C=O in amide, dmf, peptide bond
- opls_236   15.99940  ; O: C=O in amide.   Acyl R on C in amide is neutral - 
- opls_237   14.00670  ; N: primary amide.  use alkane parameters.
- opls_238   14.00670  ; N: secondary amide, peptide bond (see #279 for formyl H)
- opls_239   14.00670  ; N: tertiary amide
- opls_240    1.00800  ; H on N: primary amide
+ 
+ 
+ 
  opls_241    1.00800  ; H on N: secondary amide
  opls_242   12.01100  ; C on N: secondary N-Me amide
  opls_243   12.01100  ; C on N: tertiary  N-Me amide

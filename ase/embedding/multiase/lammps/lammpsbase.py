@@ -78,9 +78,9 @@ class LAMMPSBase(Calculator):
 		self.update_charges = update_charges
 		self.force_triclinic = force_triclinic
 		self.keep_alive = keep_alive
-		self.debug = debug           
+		self.debug = debug or tmp_dir         
 		#self.lammps_process = LammpsProcess(log=debug, lammps_command=lammps_command, output_hack=output_hack)
-		self.lammps_process = LammpsLibrary(log=debug)
+		self.lammps_process = LammpsLibrary(log=self.debug)
 		self.calls = 0
 		
 		self._custom_thermo_args = [
@@ -97,7 +97,6 @@ class LAMMPSBase(Calculator):
 			self.tmp_dir = mkdtemp(prefix='LAMMPS-')
 		else:
 			# If tmp_dir is pointing somewhere, don't remove stuff!
-			self.debug = True
 			self.tmp_dir=os.path.realpath(tmp_dir)
 			if not os.path.isdir(self.tmp_dir):
 				os.mkdir(self.tmp_dir, 0755)
@@ -495,7 +494,7 @@ class LAMMPSBase(Calculator):
 
 				
 	def set_dumpfreq(self, freq):
-		self.lammps_process.write('dump_modify dump_all every %s\n' % freq)
+		self.lammps_process.write('dump_modify dump_all every %s sort id\n' % freq)
 		
 		
 	def write_lammps_data(self):
@@ -576,7 +575,7 @@ class LammpsLibrary:
 	
 	def start(self, tmp_dir, filelabel=''):
 		if self.lammps: self.lammps.close()
-		close_logs()
+		self.close_logs()
 		
 		if self.log == True:
 			outlog = NamedTemporaryFile(prefix='log_'+filelabel, dir=tmp_dir, delete=False)
