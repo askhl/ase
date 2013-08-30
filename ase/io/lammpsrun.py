@@ -2,6 +2,7 @@ from ase.atoms import Atoms
 from ase.quaternions import Quaternions
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.parallel import paropen
+import numpy as np
 
 
 def read_lammps_dump(fileobj, index=-1, order=True):
@@ -29,14 +30,6 @@ def read_lammps_dump(fileobj, index=-1, order=True):
             lo = []
             hi = []
             tilt = []
-            id = []
-            types = []
-            positions = []
-            scaled_positions = []
-            velocities = []
-            charges = []
-            forces = []
-            quaternions = []
 
         if 'ITEM: NUMBER OF ATOMS' in line:
             line = lines.pop(0)
@@ -79,50 +72,32 @@ def read_lammps_dump(fileobj, index=-1, order=True):
 
             cell = [[xhilo, 0, 0], [xy, yhilo, 0], [xz, yz, zhilo]]
             celldisp = [[celldispx, celldispy, celldispz]]
-
-        def add_quantity(fields, var, labels):
-            for label in labels:
-                if label not in atom_attributes:
-                    return
-            var.append([float(fields[atom_attributes[label]])
-                        for label in labels])
-                
+        
         if 'ITEM: ATOMS' in line:
-            # (reliably) identify values by labels behind
-            # "ITEM: ATOMS" - requires >=lammps-7Jul09
-            # create corresponding index dictionary before
-            # iterating over atoms to (hopefully) speed up lookups...
-            atom_attributes = {}
-            for (i, x) in enumerate(line.split()[2:]):
-                atom_attributes[x] = i
-            for n in range(natoms):
-                line = lines.pop(0)
-                fields = line.split()
-                id.append(int(fields[atom_attributes['id']]))
-                types.append(int(fields[atom_attributes['type']]))
-                charges.append(float(fields[atom_attributes['q']]))
-                add_quantity(fields, positions, ['x', 'y', 'z'])
-                add_quantity(fields, scaled_positions, ['xs', 'ys', 'zs'])
-                add_quantity(fields, velocities, ['vx', 'vy', 'vz'])
-                add_quantity(fields, forces, ['fx', 'fy', 'fz'])
-                add_quantity(fields, quaternions, ['c_q[1]', 'c_q[2]',
-                                                   'c_q[3]', 'c_q[4]'])
-
+            colnames = line.split()[2:]
+            datarows = lines[:natoms]
+            lines = lines[natoms:]
+            integer_cols = (colnames.index('id'), colnames.index('type'))
+            ids, types = np.loadtxt(datarows, usecols=integer_cols, dtype=int).T
+            data = np.loadtxt(datarows)
             if order:
-                def reorder(inlist):
-                    if not len(inlist):
-                        return inlist
-                    outlist = [None] * len(id)
-                    for i, v in zip(id, inlist):
-                        outlist[i - 1] = v
-                    return outlist
-                types = reorder(types)
-                positions = reorder(positions)
-                scaled_positions = reorder(scaled_positions)
-                velocities = reorder(velocities)
-                forces = reorder(forces)
-                quaternions = reorder(quaternions)
-
+                data = data[ids-1, :]
+                types = types[ids-1, :]
+            
+            def get_quantity(labels):
+                try:
+                    cols = [colnames.index(label) for label in labels]
+                    return data[:, cols]
+                except ValueError:
+                    return []
+            
+            positions        = get_quantity(['x', 'y', 'z'])
+            scaled_positions = get_quantity(['xs', 'ys', 'zs'])
+            velocities       = get_quantity(['vx', 'vy', 'vz'])
+            charges          = get_quantity(['q'])[:,0]
+            forces           = get_quantity(['fx', 'fy', 'fz'])
+            quaternions      = get_quantity(['c_q[1]', 'c_q[2]', 'c_q[3]', 'c_q[4]'])
+            
             if len(quaternions):
                 images.append(Quaternions(symbols=types,
                                           positions=positions,
@@ -135,8 +110,7 @@ def read_lammps_dump(fileobj, index=-1, order=True):
             elif len(scaled_positions):
                 images.append(Atoms(symbols=types,
                                     scaled_positions=scaled_positions,
-                                    celldisp=celldisp,
-                                    cell=cell))
+                                    celldisp=celldisp, cell=cell))
 
             if len(velocities):
                 images[-1].set_velocities(velocities)

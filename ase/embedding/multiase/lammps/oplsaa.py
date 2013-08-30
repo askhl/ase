@@ -1,14 +1,15 @@
-from lammpsbase import LAMMPSBase
-from ffdata import SequenceType
-import read_gromacs_params
-import typing, oplsaatypes
+from ase.embedding.multiase.lammps.lammpsbase import LAMMPSBase
+from ase.embedding.multiase.lammps.ffdata import SequenceType
+from ase.embedding.multiase.lammps import read_gromacs_params
+from ase.embedding.multiase.lammps import typing, oplsaatypes
+from ase.embedding.multiase import utils
 import warnings
 import os
 import numpy as np
 
 class OPLSAA(LAMMPSBase):
 	
-	def __init__(self, gromacs_dir, label='opls-aa', pair_cutoff=10.0, kspace=False, **kwargs):
+	def __init__(self, gromacs_dir=None, label='opls-aa', pair_cutoff=10.0, kspace=False, **kwargs):
 		LAMMPSBase.__init__(self, label, **kwargs)
 		
 		self.parameters.units          = 'real'
@@ -23,6 +24,9 @@ class OPLSAA(LAMMPSBase):
 		self.parameters.dihedral_style = 'multi/harmonic'
 		#self.parameters.improper_style = 'harmonic'
 		self.parameters.special_bonds  = 'lj/coul 0.0 0.0 0.0'
+		
+		if not gromacs_dir:
+			gromacs_dir = utils.get_datafile('gromacs_top')
 		
 		# Read force field file
 		ffnonbonded = os.path.join(gromacs_dir, 'oplsaa.ff', 'ffnonbonded.itp')
