@@ -98,12 +98,9 @@ class OpenLock:
 
 def prnt(*args, **kwargs):
     """Python 3 style print function."""
-    fd = kwargs.pop('file', sys.stdout)
-    fd.write(
+    kwargs.pop('file', sys.stdout).write(
         kwargs.pop('sep', ' ').join(str(arg) for arg in args) +
         kwargs.pop('end', '\n'))
-    if kwargs.pop('flush', False):
-        fd.flush()
     if kwargs:
         raise TypeError('%r is an invalid keyword argument for this function' %
                         kwargs.keys()[0])

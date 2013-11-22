@@ -94,16 +94,11 @@ def parallel(method):
         return method
     @wraps(method)
     def new_method(*args, **kwargs):
-        ex = None
-        result = None
         if world.rank == 0:
-            try:
-                result = method(*args, **kwargs)
-            except Exception as ex:
-                pass
-        ex, result = broadcast((ex, result))
-        if ex is not None:
-            raise ex
+            result = method(*args, **kwargs)
+        else:
+            result = None
+        result = broadcast(result)
         return result
     return new_method
 
@@ -278,7 +273,7 @@ class NoDatabase:
         for symbol, n in kwargs.items():
             assert isinstance(n, int)
             Z = atomic_numbers[symbol]
-            cmps.append((Z, '=', n))
+            cmps.append((Z, op, n))
         for dct in self._select(keywords, cmps, explain=explain,
                                 verbosity=verbosity):
             if filter is None or filter(dct):

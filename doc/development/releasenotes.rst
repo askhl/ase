@@ -10,16 +10,10 @@ Development version in trunk
 
 :trac:`trunk <>`.
 
-
-Version 3.8.0
-=============
-
-22 October 2013: :trac:`tags/3.8.0 <../tags/3.8.0>`.
-
 * ASE's :mod:`gui <gui>` renamed from ``ag`` to ``ase-gui``.
 * New :ref:`STM <stm>` module.
 * Python 2.6 is now a requirement.
-* The old :func:`ase.structure.bulk` function is now deprecated.
+* Old the old :func:`ase.structure.bulk` functions is now deprecated.
   Use the new one instead (:func:`ase.lattice.bulk`).
 * We're now using BuildBot for continous integration:
   https://ase-buildbot.fysik.dtu.dk/waterfall

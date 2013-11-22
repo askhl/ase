@@ -144,24 +144,23 @@ def register_parallel_cleanup_function():
 
     atexit.register(cleanup)
 
-def distribute_cpus(size, comm):
+def distribute_cpus(parsize_calculator, comm):
     """Distribute cpus to tasks and calculators.
 
-    Input:
-    size: number of nodes per calculator
-    comm: total communicator object
+    parsize_calculator: number of nodes per calculator
 
-    Output:
-    communicator for this rank, number of calculators, index for this rank
+    comm: total communicator object
     """
     
-    assert size <= comm.size
-    assert comm.size % size == 0
+    assert parsize_calculator <= comm.size
+    assert comm.size % parsize_calculator == 0
 
-    tasks_rank = comm.rank // size
+    tasks_rank = comm.rank // parsize_calculator
 
-    r0 = tasks_rank * size
-    ranks = np.arange(r0, r0 + size)
-    mycomm = comm.new_communicator(ranks)
+    r0 = tasks_rank * parsize_calculator
+    ranks = np.arange(r0, r0 + parsize_calculator)
+    calc_comm = comm.new_communicator(ranks)
 
-    return mycomm, comm.size / size, tasks_rank 
+    tasks_comm = np.arange(0, comm.size, parsize_calculator)
+
+    return calc_comm, tasks_comm, tasks_rank
