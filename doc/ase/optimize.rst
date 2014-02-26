@@ -267,8 +267,42 @@ calculations.
 Global optimization
 ===================
 
-There are currently two global optimisation algorithms available.
+There are currently three global optimisation algorithms available.
 
+Genetic Algorithm
+-----------------
+.. module:: optimize.genetic_algorithm
+
+Genetic algorithms (GA) have proven a good alternative to Monte Carlo
+type optimization methods for global structure optimization. A GA has
+recently been implemented into ase. The method is described in detail
+in the following two publications:
+
+In the supplemental material of
+
+   | L. B. Vilhelmsen and B. Hammer
+   | `Systematic Study of Au6 to Au12 Gold Clusters on MgO(100) F Centers Using Density-Functional Theory`__
+   | Physical Review Letters, Vol. 108 (Mar 2012), 126101
+
+   __ http://dx.doi.org/10.1103/physrevlett.108.126101 
+
+and in the main text of
+
+   | L. B. Vilhelmsen, K. S. Walton and D. S. Sholl
+   | `Structure and Mobility of Metal Clusters in MOFs: Au, Pd, and AuPd Clusters in MOF-74`__
+   | Journal of the American Chemical Society, Vol. 134, No. 30, pp. 12807-12816
+
+   __ http://dx.doi.org/10.1021/ja305004a 
+
+The GA maintains a population of candidates which are continously
+paired together and optionally mutated. The optimizer is structured
+such that it can be tailored to the specific problem investigated
+(isolated cluster, supported structure, surface reconstruction, etc.)
+and to the computational resources available (single computer or a
+large computer cluster).
+
+The use of the GA is best learned trough the following tutorial:
+:ref:`genetic_algorithm_optimization_tutorial`.
 
 Basin hopping
 -------------
