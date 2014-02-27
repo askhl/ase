@@ -33,7 +33,11 @@ slab = da.get_slab()
 blmin = closest_distances_generator(get_all_atom_types(slab, atom_numbers_to_optimize), 
                                     ratio_of_covalent_radii=0.7)
 
-comp = StandardComparator(n_top=n_to_optimize)
+comp = StandardComparator(n_top=n_to_optimize,
+                          pair_cor_cum_diff=0.015,
+                          pair_cor_max=0.7,
+                          dE=0.02,
+                          mic=False)
 pairing = CutAndSplicePairing(slab, n_to_optimize, blmin)
 mutations = MutationSelector([1., 1., 1.],
                              [MirrorMutation(blmin, n_to_optimize),

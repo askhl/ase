@@ -100,7 +100,7 @@ class PermutationMutation(object):
 
     def mutate(self, atoms):
         """ Does the actual mutation. """
-        a = atoms
+        a = atoms.copy()
         s = self.n_top
         p = a.get_positions()[-s:]
         n = a.numbers[-s:]

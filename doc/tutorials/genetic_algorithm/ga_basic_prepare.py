@@ -2,6 +2,7 @@ from ase.optimize.genetic_algorithm.data import PrepareDB
 from ase.optimize.genetic_algorithm.startgenerator import StartGenerator
 from ase.optimize.genetic_algorithm.utilities import closest_distances_generator
 from ase.io import read
+from ase.visualize import view
 from ase.constraints import FixAtoms
 import numpy as np
 from ase.lattice.surface import fcc111
@@ -36,6 +37,8 @@ sg = StartGenerator(slab = slab,
 
 # generate the starting population
 starting_population = [sg.get_new_candidate() for i in xrange(20)]
+
+# view(starting_population) # uncomment this line to see the starting population
 
 # create the database to store information in
 d = PrepareDB(db_file_name = 'ga_db.sql',
