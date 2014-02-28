@@ -44,7 +44,7 @@ mutations = MutationSelector([1., 1., 1.],
 while da.get_number_of_unrelaxed_candidates() > 0:
     a = da.get_an_unrelaxed_candidate()
     a.set_calculator(EMT())
-    print 'Relaxing starting candidate {}'.format(a.info['confid'])
+    print 'Relaxing starting candidate {0}'.format(a.info['confid'])
     dyn = BFGS(a, trajectory=None, logfile=None)
     dyn.run(fmax=0.05, steps=100)
     da.add_relaxed_step(a)
