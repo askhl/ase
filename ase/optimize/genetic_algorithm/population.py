@@ -156,6 +156,9 @@ class Population(object):
         """
 
         if len(self.pop) < 2:
+            self.update()
+
+        if len(self.pop) < 2:
             return None
 
         fit = self.__get_fitness__(range(len(self.pop)), with_history)

@@ -90,19 +90,21 @@ EMT optimizer.
 The script doing all the initialisations should be run in the folder
 in which the GA optimisation is to take place. The script looks as follows:
 
-.. literalinclude:: ga_basic_prepare.py
+.. literalinclude:: ../../../ase/test/ga/basic_example_create_database.py
 
 Having initialized the GA optimization we now need to actually run the
 GA. The main script running the GA consists of first an initialization
 part, and then a loop proposing new structures and locally optimizing
 them. The main script can look as follows:
 
-.. literalinclude:: ga_basic_main.py
+.. literalinclude:: ../../../ase/test/ga/basic_example_main_run.py
 
-The above script proposes and locally relaxes 100 new candidates. This
-might take a while. The GA progress can be monitored by running the
-tool ``ase/optimize/genetic_algorithm/tools/get_all_candidates`` in
-the same folder as the GA. This will create a trajectory file
+The above script proposes and locally relaxes 20 new candidates. To
+speed up the execution of this sample the local relaxations are
+limited to 100 steps. This restriction should not be set in a real
+application. The GA progress can be monitored by running the tool
+``ase/optimize/genetic_algorithm/tools/get_all_candidates`` in the
+same folder as the GA. This will create a trajectory file
 ``all_candidates.traj`` which includes all locally relaxed candidates
 the GA has tried. This script can be run at the same time as the main
 script is running. This is possible because of the SQLite database

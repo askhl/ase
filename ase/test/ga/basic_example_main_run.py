@@ -17,7 +17,7 @@ from ase.optimize.genetic_algorithm.standardmutations import PermutationMutation
 # Change the following three parameters to suit your needs
 population_size = 20
 mutation_probability = 0.3
-n_to_test = 100
+n_to_test = 20
 
 # Initialize the different components of the GA
 da = DataConnection('ga_db.sql')
@@ -40,19 +40,19 @@ mutations = MutationSelector([1., 1., 1.],
                               RattleMutation(blmin, n_to_optimize),
                               PermutationMutation(n_to_optimize)])
 
+# Relax all unrelaxed structures (e.g. the starting population)
+while da.get_number_of_unrelaxed_candidates() > 0:
+    a = da.get_an_unrelaxed_candidate()
+    a.set_calculator(EMT())
+    print 'Relaxing starting candidate {}'.format(a.info['confid'])
+    dyn = BFGS(a, trajectory=None, logfile=None)
+    dyn.run(fmax=0.05, steps=100)
+    da.add_relaxed_step(a)
+
 # create the population
 population = Population(data_connection=da,
                         population_size=population_size,
                         comparator=comp)
-
-# Relax all unrelaxed structures (e.g. the starting population)
-while da.get_number_of_unrelaxed_candidates() > 0:
-    print 'Starting a relaxation'
-    a = da.get_an_unrelaxed_candidate()
-    a.set_calculator(EMT())
-    dyn = BFGS(a, trajectory=None)
-    dyn.run(fmax=0.05)
-    da.add_relaxed_step(a)
 
 # test n_to_test new candidates
 for i in xrange(n_to_test):
@@ -73,9 +73,10 @@ for i in xrange(n_to_test):
     # Relax the new candidate
     a3.set_calculator(EMT())
     dyn = BFGS(a3, trajectory=None, logfile=None)
-    dyn.run(fmax=0.05)
+    dyn.run(fmax=0.05, steps=100)
     da.add_relaxed_step(a3)
 
 write('all_candidates.traj', da.get_all_relaxed_candidates())
 
 da.close()
+

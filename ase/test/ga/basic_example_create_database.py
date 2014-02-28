@@ -7,9 +7,13 @@ from ase.constraints import FixAtoms
 import numpy as np
 from ase.lattice.surface import fcc111
 
+db_file = 'ga_db.sql'
+db_folder = 'db_folder/'
+tmp_folder = 'tmp_folder/'
+
 # create the surface
-slab = fcc111('Au', size=(4,4,2), vacuum=10.0, orthogonal = True)
-slab.set_constraint(FixAtoms(mask = slab.positions[:,2] <=10.))
+slab = fcc111('Au', size=(4,4,1), vacuum=10.0, orthogonal = True)
+slab.set_constraint(FixAtoms(mask = len(slab) * [True]))
 
 # define the volume in which the adsorbed cluster is optimized
 # the volume is defined by a corner position (p0)
@@ -41,9 +45,9 @@ starting_population = [sg.get_new_candidate() for i in xrange(20)]
 # view(starting_population) # uncomment this line to see the starting population
 
 # create the database to store information in
-d = PrepareDB(db_file_name = 'ga_db.sql',
-              db_data_folder = './db_folder/',
-              tmp_folder = './tmp_folder/')
+d = PrepareDB(db_file_name = db_file,
+              db_data_folder = db_folder,
+              tmp_folder = tmp_folder)
 
 # add the information created above
 d.add_slab(slab)

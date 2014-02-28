@@ -7,6 +7,11 @@ import numpy as np
 db_file = 'ga_db.sql'
 db_folder = 'db_folder/'
 tmp_folder = 'tmp_folder/'
+import shutil
+for o in [db_folder, tmp_folder]:
+    shutil.rmtree(o, ignore_errors=True)
+if os.path.isfile(db_file):
+    os.remove(db_file)
 
 d = PrepareDB(db_file_name=db_file,
               db_data_folder=db_folder,
