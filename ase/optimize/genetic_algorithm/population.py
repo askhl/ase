@@ -81,7 +81,7 @@ class Population(object):
         if len(self.pop) == 0:
             self.__initialize_pop__()
 
-        new_cand = self.dc.get_all_relaxed_candidates(since=self.last_update)
+        new_cand = self.dc.get_all_relaxed_candidates(only_new=True)
         self.last_update = datetime.now()
         for a in new_cand:
             self.__add_candidate__(a)

@@ -26,7 +26,7 @@ population_size = 20
 mutation_probability = 0.3
 
 # Initialize the different components of the GA
-da = DataConnection('ga_db.sql')
+da = DataConnection('gadb.db')
 
 # The PBS queing interface is created
 pbs_run = PBSQueueRun(da, 
@@ -34,7 +34,7 @@ pbs_run = PBSQueueRun(da,
                       n_simul=5,
                       job_template_generator=jtg)
 
-tmp_folder = da.get_tmp_folder()
+tmp_folder = 'tmp_folder/'
 atom_numbers_to_optimize = da.get_atom_numbers_to_optimize()
 n_to_optimize = len(atom_numbers_to_optimize)
 slab = da.get_slab()
@@ -74,10 +74,7 @@ while not pbs_run.enough_jobs_running() and len(population.get_current_populatio
         a3_mut, desc = mutations.mutate(a3)
         if a3_mut != None:
             da.add_unrelaxed_step(a3_mut, desc)
-            a3 = a3_mut
-            
+            a3 = a3_mut            
     pbs_run.relax(a3)
 
 write('all_candidates.traj', da.get_all_relaxed_candidates())
-
-da.close()

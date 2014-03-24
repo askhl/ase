@@ -7,9 +7,7 @@ from ase.constraints import FixAtoms
 import numpy as np
 from ase.lattice.surface import fcc111
 
-db_file = 'ga_db.sql'
-db_folder = 'db_folder/'
-tmp_folder = 'tmp_folder/'
+db_file = 'gadb.db'
 
 # create the surface
 slab = fcc111('Au', size=(4,4,1), vacuum=10.0, orthogonal = True)
@@ -46,14 +44,8 @@ starting_population = [sg.get_new_candidate() for i in xrange(20)]
 
 # create the database to store information in
 d = PrepareDB(db_file_name = db_file,
-              db_data_folder = db_folder,
-              tmp_folder = tmp_folder)
-
-# add the information created above
-d.add_slab(slab)
-d.define_atom_numbers(atom_numbers)
+              simulation_cell=slab,
+              stoichiometry=atom_numbers)
+              
 for a in starting_population:
     d.add_unrelaxed_candidate(a)
-
-# close the database
-d.close()

@@ -19,14 +19,14 @@ n_to_test = 100
 
 
 # Initialize the different components of the GA
-da = DataConnection('ga_db.sql')
+da = DataConnection('gadb.db')
 
 # An extra object is needed to handle the parallel execution
 parallel_local_run = ParallelLocalRun(data_connection = da,
                                       n_simul = 4,
                                       calc_script = 'calc.py')
 
-tmp_folder = da.get_tmp_folder()
+tmp_folder = 'tmp_folder/'
 atom_numbers_to_optimize = da.get_atom_numbers_to_optimize()
 n_to_optimize = len(atom_numbers_to_optimize)
 slab = da.get_slab()
@@ -83,5 +83,3 @@ while parallel_local_run.get_number_of_jobs_running() > 0:
     time.sleep(5.)
 
 write('all_candidates.traj', da.get_all_relaxed_candidates())
-
-da.close()

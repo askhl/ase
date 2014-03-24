@@ -8,13 +8,7 @@ from ase.lattice.surface import fcc111
 from ase.constraints import FixAtoms
 from ase.calculators.singlepoint import SinglePointCalculator
 
-db_file = 'ga_db.sql'
-db_folder = 'db_folder/'
-tmp_folder = 'tmp_folder/'
-
-d = PrepareDB(db_file_name=db_file,
-              db_data_folder=db_folder,
-              tmp_folder=tmp_folder)
+db_file = 'gadb_logics_test.db'
 
 slab = fcc111('Au', size=(4,4,2), vacuum=10.0, orthogonal = True)
 slab.set_constraint(FixAtoms(mask = slab.positions[:,2] <=10.))
@@ -46,13 +40,12 @@ sg = StartGenerator(slab = slab,
 # generate the starting population
 starting_population = [sg.get_new_candidate() for i in xrange(20)]
 
-d.add_slab(slab)
-d.define_atom_numbers(atom_numbers)
+d = PrepareDB(db_file_name=db_file,
+              simulation_cell=slab,
+              stoichiometry=atom_numbers)
 
 for a in starting_population:
     d.add_unrelaxed_candidate(a)
-
-d.close()
 
 # and now for the actual test
 dc = DataConnection(db_file)
@@ -84,7 +77,4 @@ assert dc.get_all_candidates_in_queue()[0] == confid
 dc.remove_from_queue(confid)
 assert len(dc.get_all_candidates_in_queue()) == 0
 
-import shutil
-for o in [db_folder, tmp_folder]:
-    shutil.rmtree(o)
 os.remove(db_file)

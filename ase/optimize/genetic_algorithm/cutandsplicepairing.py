@@ -123,7 +123,7 @@ class CutAndSplicePairing(object):
 
             # While we have too many of the given atom type
             while len(used) > types[u]:
-                index = used.index(min(used, key=lambda x: abs(x.distance)))
+                index = used.index(max(used, key=lambda x: abs(x.distance)))
                 not_used.append(used.pop(index))
 
             use_total[u] = used

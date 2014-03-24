@@ -80,7 +80,7 @@ class RattleMutation(object):
         if count == 1000:
             return None, 'rattle'
         tot = slab + top
-        return tot, 'rattle'
+        return tot, 'mutation: rattle'
 
 
 class PermutationMutation(object):
@@ -118,7 +118,7 @@ class PermutationMutation(object):
         p_tot = a.get_positions()
         p_tot[-s:] = p
         a.set_positions(p_tot)
-        return a, 'permutation'
+        return a, 'mutation: permutation'
 
 
 class MirrorMutation(object):
@@ -241,5 +241,5 @@ class MirrorMutation(object):
                 changed = True
             tot = slab + cand
         if counter == n_tries:
-            return (None, 'mirror')
-        return (tot, 'mirror')
+            return (None, 'mutation: mirror')
+        return (tot, 'mutation: mirror')

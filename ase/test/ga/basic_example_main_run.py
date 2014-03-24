@@ -20,8 +20,8 @@ mutation_probability = 0.3
 n_to_test = 20
 
 # Initialize the different components of the GA
-da = DataConnection('ga_db.sql')
-tmp_folder = da.get_tmp_folder()
+da = DataConnection('gadb.db')
+tmp_folder = 'tmp_folder/'
 atom_numbers_to_optimize = da.get_atom_numbers_to_optimize()
 n_to_optimize = len(atom_numbers_to_optimize)
 slab = da.get_slab()
@@ -75,8 +75,7 @@ for i in xrange(n_to_test):
     dyn = BFGS(a3, trajectory=None, logfile=None)
     dyn.run(fmax=0.05, steps=100)
     da.add_relaxed_step(a3)
+    population.update()
 
 write('all_candidates.traj', da.get_all_relaxed_candidates())
-
-da.close()
 

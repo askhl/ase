@@ -34,7 +34,7 @@ list or directly to Lasse Vilhelmsen at lassebv@phys.au.dk.
 A Brief Overview of the Implementation
 ====================================== 
 
-The GA relies on a SQLite database for tracking which structures have
+The GA relies on the asedb module for tracking which structures have
 been found. Before the GA optimization starts the user therefore needs
 to prepare this database and appropriate folders. This is done trough
 an initialization script as the one described in the next section. In
