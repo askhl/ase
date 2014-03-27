@@ -1,5 +1,5 @@
 from ase.optimize.genetic_algorithm.startgenerator import StartGenerator
-from ase.optimize.genetic_algorithm.utilities import closest_distances_generator
+from ase.optimize.genetic_algorithm.utilities import closest_distances_generator, atoms_too_close
 from ase.optimize.genetic_algorithm.cutandsplicepairing import CutAndSplicePairing
 import numpy as np
 from ase.lattice.surface import fcc111
@@ -60,3 +60,6 @@ for i in xrange(n_top):
 
 # verify that c3 includes atoms from both c1 and c2
 assert len(n1[n1 > -1]) > 0 and len(n2[n2 > -1]) > 0
+
+# verify no atoms too close
+assert not atoms_too_close(top3, cd)

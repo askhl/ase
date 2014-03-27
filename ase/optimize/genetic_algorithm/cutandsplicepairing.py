@@ -176,6 +176,24 @@ class CutAndSplicePairing(object):
             if not too_close and test_dist_to_slab:
                 too_close = atoms_too_close_two_sets(self.slab,
                                                      top, self.blmin)
+
+            # Verify that the generated structure contains atoms from
+            # both parents
+            n1 = -1 * np.ones((N, ))
+            n2 = -1 * np.ones((N, ))
+            for i in xrange(N):
+                for j in xrange(N):
+                    if np.all(a1.positions[j, :] == top.positions[i, :]):
+                        n1[i] = j
+                        break
+                    elif np.all(a2.positions[j, :] == top.positions[i, :]):
+                        n2[i] = j
+                        break
+                assert (n1[i] > -1 and n2[i] == -1) or (n1[i] == -1 and n2[i] > -1)
+
+            if not (len(n1[n1 > -1]) > 0 and len(n2[n2 > -1]) > 0):
+                too_close = True
+
             counter += 1
 
         if counter == n_max:
