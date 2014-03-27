@@ -27,14 +27,14 @@ mutation_probability = 0.3
 
 # Initialize the different components of the GA
 da = DataConnection('gadb.db')
-
+tmp_folder = 'tmp_folder/'
 # The PBS queing interface is created
 pbs_run = PBSQueueRun(da, 
+                      tmp_folder=tmp_folder,
                       job_prefix='Ag2Au2_opt',
                       n_simul=5,
                       job_template_generator=jtg)
 
-tmp_folder = 'tmp_folder/'
 atom_numbers_to_optimize = da.get_atom_numbers_to_optimize()
 n_to_optimize = len(atom_numbers_to_optimize)
 slab = da.get_slab()

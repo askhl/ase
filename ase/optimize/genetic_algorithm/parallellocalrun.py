@@ -17,14 +17,16 @@ class ParallelLocalRun(object):
 
         Parameters:
          data_connection: DataConnection object.
+         tmp_folder: Folder for temporary files
          n_simul: The number of simultaneous relaxations.
          calc_script: Reference to the relaxation script.
     """
-    def __init__(self, data_connection, n_simul, calc_script):
+    def __init__(self, data_connection, tmp_folder,
+                 n_simul, calc_script):
         self.dc = data_connection
         self.n_simul = n_simul
         self.calc_script = calc_script
-        self.tmp_folder = self.dc.get_tmp_folder()
+        self.tmp_folder = tmp_folder
         self.running_pids = []
 
     def get_number_of_jobs_running(self):
@@ -48,7 +50,7 @@ class ParallelLocalRun(object):
 
         # Mark the structure as queued and run the external py script.
         self.dc.mark_as_queued(a)
-        fname = '{0}/cand{1}.traj'.format(self.dc.get_tmp_folder(),
+        fname = '{0}/cand{1}.traj'.format(self.tmp_folder,
                                           a.info['confid'])
         write(fname, a)
         p = Popen(['python', self.calc_script, fname])
@@ -77,9 +79,9 @@ class ParallelLocalRun(object):
         # be loaded in.
         for (confid, _) in stopped_runs:
             try:
-                tf = self.dc.get_tmp_folder()
+                tf = self.tmp_folder
                 a = read('{0}/cand{1}_relax.traj'.format(tf,
                                                          confid))
                 self.dc.add_relaxed_step(a)
-            except Exception, e:
+            except IOError, e:
                 print(e)

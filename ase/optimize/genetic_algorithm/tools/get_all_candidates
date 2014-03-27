@@ -15,7 +15,7 @@ p.add_option('-o', '--output',
              help='Traj file to save the candidates to')
 
 p.add_option('-d', '--db',
-             default='ga_db.sql',
+             default='gadb.db',
              help='SQLite db file')
 
 p.add_option('-s', '--sort',

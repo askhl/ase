@@ -20,13 +20,14 @@ n_to_test = 100
 
 # Initialize the different components of the GA
 da = DataConnection('gadb.db')
+tmp_folder = 'tmp_folder/'
 
 # An extra object is needed to handle the parallel execution
-parallel_local_run = ParallelLocalRun(data_connection = da,
-                                      n_simul = 4,
-                                      calc_script = 'calc.py')
+parallel_local_run = ParallelLocalRun(data_connection=da,
+                                      tmp_folder=tmp_folder,
+                                      n_simul=4,
+                                      calc_script='calc.py')
 
-tmp_folder = 'tmp_folder/'
 atom_numbers_to_optimize = da.get_atom_numbers_to_optimize()
 n_to_optimize = len(atom_numbers_to_optimize)
 slab = da.get_slab()

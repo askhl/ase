@@ -17,10 +17,11 @@ class PBSQueueRun(object):
         the job script as text.
         If the traj file is called f the job must write a file
         f[:-5] + '_done.traj' which is then read by this object.
-          
+
        Parameters:
 
        data_connection: The DataConnection object.
+       tmp_folder: Temporary folder for all calculations
        job_prefix: Prefix of the job submitted. This identifier is used
        to determine how many jobs are currently running.
        n_simul: The number of simultaneous jobs to keep in the queuing system.
@@ -30,7 +31,7 @@ class PBSQueueRun(object):
        qsub_command: The name of the qsub command (default qsub).
        qstat_command: The name of the qstat command (default qstat).
     """
-    def __init__(self, data_connection, job_prefix,
+    def __init__(self, data_connection, tmp_folder, job_prefix,
                  n_simul, job_template_generator,
                  qsub_command='qsub', qstat_command='qstat'):
         self.dc = data_connection
@@ -40,6 +41,7 @@ class PBSQueueRun(object):
         self.__cleanup__()
         self.qsub_command = qsub_command
         self.qstat_command = qstat_command
+        self.tmp_folder = tmp_folder
 
     def relax(self, a):
         """ Add a structure to the queue. This method does not fail
@@ -47,7 +49,7 @@ class PBSQueueRun(object):
             submits the job. """
         self.__cleanup__()
         self.dc.mark_as_queued(a)
-        fname = '{0}/cand{1}.traj'.format(self.dc.get_tmp_folder(),
+        fname = '{0}/cand{1}.traj'.format(self.tmp_folder,
                                           a.info['confid'])
         write(fname, a)
         job_name = '{0}_{1}'.format(self.job_prefix, a.info['confid'])
@@ -82,7 +84,7 @@ class PBSQueueRun(object):
             submitted to the queing system. """
         confs = self.dc.get_all_candidates_in_queue()
         for c in confs:
-            fdone = '{0}/cand{1}_done.traj'.format(self.dc.get_tmp_folder(),
+            fdone = '{0}/cand{1}_done.traj'.format(self.tmp_folder,
                                                    c)
             if os.path.isfile(fdone) and os.path.getsize(fdone) > 0:
                 try:
@@ -97,9 +99,9 @@ class PBSQueueRun(object):
                     if len(a) == 0:
                         txt = 'Could not read candidate ' + \
                             '{0} from the filesystem'.format(c)
-                        raise Exception(txt)
+                        raise IOError(txt)
                     a = a[-1]
                     a.info['confid'] = c
                     self.dc.add_relaxed_step(a)
-                except Exception, e:
+                except IOError, e:
                     print(e)

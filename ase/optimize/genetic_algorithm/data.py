@@ -1,19 +1,15 @@
 """
     Objects which handle all communication with the SQLite database.
 """
-import sqlite3
 import os
-from ase.optimize.genetic_algorithm.utilities import db_call_with_error_tol
-from ase.optimize.genetic_algorithm.utilities import save_trajectory
-from ase.optimize.genetic_algorithm.utilities import get_trajectory
-import cPickle as pickle
-import datetime
 import ase.db
 
 def split_description(desc):
+    """ Utility method for string splitting. """
     d = desc.split(':')
     assert len(d) == 2, desc
     return d[0], d[1]
+
 
 class DataConnection(object):
     """ Class that handles all database communication.
@@ -42,9 +38,9 @@ class DataConnection(object):
         to_get = self.__get_ids_of_all_unrelaxed_candidates__()
         if len(to_get) == 0:
             raise ValueError('No unrelaxed candidate to return')
-        
+
         a = self.c.get_atoms(gaid=to_get[0])
-        a.info['confid']=to_get[0]
+        a.info['confid'] = to_get[0]
         return a
 
     def __get_ids_of_all_unrelaxed_candidates__(self):
@@ -53,8 +49,8 @@ class DataConnection(object):
         all_unrelaxed_ids = [t.gaid for t in self.c.select(relaxed=0)]
         all_relaxed_ids = [t.gaid for t in self.c.select(relaxed=1)]
         all_queued_ids = [t.gaid for t in self.c.select(queued=1)]
-        
-        actually_unrelaxed = [gaid for gaid in all_unrelaxed_ids 
+
+        actually_unrelaxed = [gaid for gaid in all_unrelaxed_ids
                               if (gaid not in all_relaxed_ids and
                                   gaid not in all_queued_ids)]
 
@@ -66,10 +62,10 @@ class DataConnection(object):
             There can be several traj files for
             one configuration if it has undergone
             several changes (mutations, pairings, etc.)."""
-        all = self.c.select(gaid=confid)
-        all.sort(key = lambda x: x.mtime)
-        return self.c.get_atoms(all[-1].gaid)
-        
+        allc = self.c.select(gaid=confid)
+        allc.sort(key=lambda x: x.mtime)
+        return self.c.get_atoms(allc[-1].gaid)
+
     def mark_as_queued(self, a):
         """ Marks a configuration as queued for relaxation. """
         gaid = a.info['confid']
@@ -80,7 +76,7 @@ class DataConnection(object):
         a.get_potential_energy()  # test that energy can be extracted
         gaid = a.info['confid']
         self.c.write(a, gaid=gaid, relaxed=1)
-        
+
     def add_unrelaxed_candidate(self, candidate, description):
         """ Adds a new candidate which needs to be relaxed. """
         t, desc = split_description(description)
@@ -112,7 +108,7 @@ class DataConnection(object):
     def get_atom_numbers_to_optimize(self):
         """ Get the list of atom numbers being optimized. """
         v = self.c.get(simulation_cell=True)
-        
+
         return v.data.optimization_stoichiometry
 
     def get_slab(self):
@@ -129,11 +125,9 @@ class DataConnection(object):
         """
         entries = self.c.select(pairing=1)
 
-        ntot = 0
         frequency = dict()
         pairs = []
         for e in entries:
-            ntot += 1
             txt = e.description
             tsplit = txt.split(' ')
             c1 = int(tsplit[1])
@@ -154,7 +148,7 @@ class DataConnection(object):
             invoced. """
 
         entries = self.c.select(relaxed=1)
-        
+
         trajs = []
         for v in entries:
             if only_new and v.gaid in self.already_returned:
@@ -171,16 +165,18 @@ class DataConnection(object):
             been relaxed. """
         all_queued_ids = [t.gaid for t in self.c.select(queued=1)]
         all_relaxed_ids = [t.gaid for t in self.c.select(relaxed=1)]
-        
-        in_queue = [qid for qid in all_queued_ids if qid not in all_relaxed_ids]
+
+        in_queue = [qid for qid in all_queued_ids
+                    if qid not in all_relaxed_ids]
         return in_queue
 
     def remove_from_queue(self, confid):
         """ Removes the candidate confid from the queue. """
-        
+
         queued_ids = self.c.select(queued=1, gaid=confid)
         ids = [q.id for q in queued_ids]
         self.c.delete(ids)
+
 
 class PrepareDB(object):
 
@@ -203,15 +199,19 @@ class PrepareDB(object):
 
         self.c = ase.db.connect(self.db_file_name)
 
-        self.c.write(simulation_cell, data={'optimization_stoichiometry': stoichiometry},
+        self.c.write(simulation_cell,
+                     data={'optimization_stoichiometry': stoichiometry},
                      simulation_cell=True)
 
     def add_unrelaxed_candidate(self, candidate):
         """ Add an unrelaxed starting candidate. """
-        gaid = self.c.write(candidate, origin='StartingCandidateUnrelaxed', relaxed=False)
+        gaid = self.c.write(candidate,
+                            origin='StartingCandidateUnrelaxed',
+                            relaxed=False)
         self.c.update(gaid, gaid=gaid)
 
     def add_relaxed_candidate(self, candidate):
         """ Add a relaxed starting candidate. """
-        gaid = self.c.write(candidate, origin='StartingCandidateRelaxed', relaxed=True)
+        gaid = self.c.write(candidate,
+                            origin='StartingCandidateRelaxed', relaxed=True)
         self.c.update(gaid, gaid=gaid)
