@@ -69,7 +69,7 @@ class DataConnection(object):
     def mark_as_queued(self, a):
         """ Marks a configuration as queued for relaxation. """
         gaid = a.info['confid']
-        self.c.write(None, gaid=gaid, queued=1)
+        self.c.write(a, gaid=gaid, queued=1)
 
     def add_relaxed_step(self, a):
         """ After a candidate is relaxed it must be marked as such. """
