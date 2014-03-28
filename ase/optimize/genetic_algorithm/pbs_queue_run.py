@@ -38,10 +38,10 @@ class PBSQueueRun(object):
         self.job_prefix = job_prefix
         self.n_simul = n_simul
         self.job_template_generator = job_template_generator
-        self.__cleanup__()
         self.qsub_command = qsub_command
         self.qstat_command = qstat_command
         self.tmp_folder = tmp_folder
+        self.__cleanup__()
 
     def relax(self, a):
         """ Add a structure to the queue. This method does not fail
