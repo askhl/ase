@@ -1,8 +1,18 @@
 """ Implementaiton of a population for maintaining a GA population and
 proposing structures to pair. """
-from datetime import datetime
 from random import randrange, random
 from math import tanh, sqrt
+
+
+def count_looks_like(a, all_cand, comp):
+    """ Utility method for counting occurences. """
+    n = 0
+    for b in all_cand:
+        if a.info['confid'] == b.info['confid']:
+            continue
+        if comp.looks_like(a, b):
+            n += 1
+    return n
 
 
 class Population(object):
@@ -21,7 +31,9 @@ class Population(object):
         self.dc = data_connection
         self.pop_size = population_size
         self.comparator = comparator
-
+        self.pop = []
+        self.pairs = None
+        self.all_cand = None
         self.__initialize_pop__()
 
     def __initialize_pop__(self):
@@ -29,20 +41,8 @@ class Population(object):
             the population is created. """
 
         # Get all relaxed candidates from the database
-        self.last_update = datetime.now()
         all_cand = self.dc.get_all_relaxed_candidates()
         all_cand.sort(key=lambda x: x.get_potential_energy())
-        self.pop = []
-
-        for i in xrange(len(all_cand)):
-            all_cand[i].info['looks_like'] = 0
-
-        # Determine which candidates are equal.
-        for i in xrange(len(all_cand)):
-            for j in xrange(i + 1, len(all_cand)):
-                if self.comparator.looks_like(all_cand[i], all_cand[j]):
-                    all_cand[i].info['looks_like'] += 1
-                    all_cand[j].info['looks_like'] += 1
 
         # Fill up the population with the self.pop_size most stable
         # unique candidates.
@@ -57,6 +57,10 @@ class Population(object):
                     break
             if not eq:
                 self.pop.append(c)
+
+        for a in self.pop:
+            a.info['looks_like'] = count_looks_like(a, all_cand,
+                                                    self.comparator)
 
         self.all_cand = all_cand
         self.__calc_participation__()
@@ -82,7 +86,6 @@ class Population(object):
             self.__initialize_pop__()
 
         new_cand = self.dc.get_all_relaxed_candidates(only_new=True)
-        self.last_update = datetime.now()
         for a in new_cand:
             self.__add_candidate__(a)
             self.all_cand.append(a)
@@ -95,11 +98,6 @@ class Population(object):
 
     def __add_candidate__(self, a):
         """ Adds a single candidate to the population. """
-        a.info['looks_like'] = 0
-        for b in self.all_cand:
-            if self.comparator.looks_like(a, b):
-                a.info['looks_like'] += 1
-                b.info['looks_like'] += 1
 
         #check if the structure is too high in energy
         if a.get_potential_energy() > self.pop[-1].get_potential_energy() \
@@ -112,6 +110,9 @@ class Population(object):
             if self.comparator.looks_like(a, b):
                 if b.get_potential_energy() > a.get_potential_energy():
                     del self.pop[i]
+                    a.info['looks_like'] = count_looks_like(a,
+                                                            self.all_cand,
+                                                            self.comparator)
                     self.pop.append(a)
                     self.pop.sort(key=lambda x: x.get_potential_energy())
                 return
@@ -122,6 +123,9 @@ class Population(object):
             del self.pop[-1]
 
         # add the new candidate
+        a.info['looks_like'] = count_looks_like(a,
+                                                self.all_cand,
+                                                self.comparator)
         self.pop.append(a)
         self.pop.sort(key=lambda x: x.get_potential_energy())
 

@@ -80,8 +80,8 @@ class ParallelLocalRun(object):
         for (confid, _) in stopped_runs:
             try:
                 tf = self.tmp_folder
-                a = read('{0}/cand{1}_relax.traj'.format(tf,
-                                                         confid))
+                a = read('{0}/cand{1}_done.traj'.format(tf,
+                                                        confid))
                 self.dc.add_relaxed_step(a)
             except IOError, e:
                 print(e)

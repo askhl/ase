@@ -1,6 +1,7 @@
 from ase.optimize.genetic_algorithm.data import PrepareDB
 from ase.optimize.genetic_algorithm.startgenerator import StartGenerator
 from ase.optimize.genetic_algorithm.utilities import closest_distances_generator
+from ase.optimize.genetic_algorithm.utilities import get_all_atom_types
 from ase.io import read
 from ase.visualize import view
 from ase.constraints import FixAtoms
@@ -28,7 +29,8 @@ v3[2] = 3.
 atom_numbers = 2 * [47] + 2 * [79]
 
 # define the closest distance two atoms of a given species can be to each other
-cd = closest_distances_generator(atom_numbers = [47, 79],
+unique_atom_types = get_all_atom_types(slab, atom_numbers)
+cd = closest_distances_generator(atom_numbers = unique_atom_types,
                                  ratio_of_covalent_radii = 0.7)
 
 # create the starting population

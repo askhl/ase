@@ -16,6 +16,6 @@ vb = VariansBreak(a, dyn)
 dyn.attach(vb.write)
 dyn.run(fmax = 0.05)
 
-write(fname[:-5] + '_relax.traj', a)
+write(fname[:-5] + '_done.traj', a)
 
 print 'Done relaxing {}'.format(fname)
