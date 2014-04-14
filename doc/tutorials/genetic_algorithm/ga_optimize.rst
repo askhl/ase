@@ -34,11 +34,11 @@ list or directly to Lasse Vilhelmsen at lassebv@phys.au.dk.
 A Brief Overview of the Implementation
 ====================================== 
 
-The GA relies on the asedb module for tracking which structures have
+The GA relies on the ase.db module for tracking which structures have
 been found. Before the GA optimization starts the user therefore needs
 to prepare this database and appropriate folders. This is done trough
 an initialization script as the one described in the next section. In
-this initialization the starting population is also generated and
+this initialization the starting population is generated and
 added to the database.
 
 After initialization the main script is run. This script defines
@@ -107,8 +107,8 @@ application. The GA progress can be monitored by running the tool
 same folder as the GA. This will create a trajectory file
 ``all_candidates.traj`` which includes all locally relaxed candidates
 the GA has tried. This script can be run at the same time as the main
-script is running. This is possible because of the SQLite database
-being updated as the GA progresses.
+script is running. This is possible because the ase.db database
+is being updated as the GA progresses.
 
 Running the GA in Parallel
 ==========================
@@ -121,17 +121,17 @@ same compute node, and the other class integrates the GA into the PBS
 queuing system used at many high performance computer clusters.
 
 
-Several Local Relaxations
--------------------------
+Relaxations in Parallel on the Same Computer
+--------------------------------------------
 
-In order to locally relax several structures simultaneously a seperate
-script relaxing one structure needs to be created. Continuing the
-example from above we therefore create a script taking as input the
-filename of the structure to relax and which as output saves a
-trajectory file with the locally optimized structure. It is important
-that the relaxed structure is named as in this script, since the
-parallel integration assumes this file naming scheme. For the example
-described above this script could look like
+In order to relax several structures simultaneously on the same
+computer a seperate script relaxing one structure needs to be
+created. Continuing the example from above we therefore create a
+script taking as input the filename of the structure to relax and
+which as output saves a trajectory file with the locally optimized
+structure. It is important that the relaxed structure is named as in
+this script, since the parallel integration assumes this file naming
+scheme. For the example described above this script could look like
 
 .. literalinclude:: ga_basic_calc.py
 
@@ -170,11 +170,17 @@ script can thus be invoked by a crontab once every hour.
 
 To run the GA together with a queing system the user needs to specify
 a function which takes as input a job name and the path to the
-trajectory file that needs to be submitted. From this the function
-generates a PBS job file that can be submitted to the queing
-system. Handling of the parallel logic is in this case in the main
-script. The parameter n_simul given to the ``PBSQueueRun`` object
-determines how many relaxations should be in the queuing system
-simultaneously. The main script now looks the following:
+trajectory file that needs to be submitted (the ``jtg`` function in
+the sample script below). From this the function generates a PBS job
+file which is submitted to the queing system. The calculator script
+specified in the jobfile needs to obey the same naming scheme as the
+sample calculator script in the previous section. The sample
+relaxation script given in the previous can be used as starting point
+for a relaxation script.
+
+Handling of the parallel logic is in this case in the main script. The
+parameter n_simul given to the ``PBSQueueRun`` object determines how
+many relaxations should be in the queuing system simultaneously. The
+main script now looks the following:
 
 .. literalinclude:: ga_basic_pbs_main.py

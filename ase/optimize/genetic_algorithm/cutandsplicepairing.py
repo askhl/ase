@@ -140,14 +140,20 @@ class CutAndSplicePairing(object):
         """ The method called by the user that
         returns the paired structure. """
 
-        assert len(a1) == len(a2)
+        if len(a1) != len(self.slab) + self.n_top:
+            raise ValueError('Wrong size of structure to optimize')
+        if len(a1) != len(a2):
+            raise ValueError('The two structures do not have the same length')
+        
         N = self.n_top
 
         # Only consider the atoms to optimize
         a1 = a1[len(a1) - N: len(a1)]
         a2 = a2[len(a2) - N: len(a2)]
 
-        assert np.sum(np.abs(a1.numbers - a2.numbers)) == 0
+        if not np.array_equal(a1.numbers, a2.numbers):
+            err = 'Trying to pair two structures with different stoichiometry'
+            raise ValueError(err)
 
         # Find the common center of the two clusters
         c1cm = np.average(a1.get_positions(), axis=0)

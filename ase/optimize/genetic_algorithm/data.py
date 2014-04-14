@@ -3,6 +3,7 @@
 """
 import os
 import ase.db
+import numpy as np
 
 def split_description(desc):
     """ Utility method for string splitting. """
@@ -28,6 +29,11 @@ class DataConnection(object):
             raise IOError('DB file {0} not found'.format(self.db_file_name))
         self.c = ase.db.connect(self.db_file_name)
         self.already_returned = []
+
+        slab = self.get_slab()
+        atom_numbers = list(slab.numbers)
+        atom_numbers.extend(list(self.get_atom_numbers_to_optimize()))
+        self.atom_numbers = np.array(atom_numbers)
 
     def get_number_of_unrelaxed_candidates(self):
         """ Returns the number of candidates not yet queued or relaxed. """
@@ -69,12 +75,17 @@ class DataConnection(object):
     def mark_as_queued(self, a):
         """ Marks a configuration as queued for relaxation. """
         gaid = a.info['confid']
+        if not np.array_equal(a.numbers, self.atom_numbers):
+            raise ValueError('Wrong stoichiometry')
         self.c.write(a, gaid=gaid, queued=1)
 
     def add_relaxed_step(self, a):
         """ After a candidate is relaxed it must be marked as such. """
         a.get_potential_energy()  # test that energy can be extracted
         gaid = a.info['confid']
+        if not np.array_equal(a.numbers, self.atom_numbers):
+            raise ValueError('Wrong stoichiometry')
+
         self.c.write(a, gaid=gaid, relaxed=1)
 
     def add_unrelaxed_candidate(self, candidate, description):
@@ -83,6 +94,8 @@ class DataConnection(object):
         kwargs = {'relaxed': 0,
                   t: 1,
                   'description': desc}
+        if not np.array_equal(candidate.numbers, self.atom_numbers):
+            raise ValueError('Wrong stoichiometry')
 
         gaid = self.c.write(candidate, **kwargs)
         self.c.update(gaid, gaid=gaid)
@@ -92,6 +105,10 @@ class DataConnection(object):
         """ Add a change to a candidate without it having been relaxed.
             This method is typically used when a
             candidate has been mutated. """
+
+        if not np.array_equal(candidate.numbers, self.atom_numbers):
+            raise ValueError('Wrong stoichiometry')
+
         gaid = candidate.info['confid']
         t, desc = split_description(description)
         kwargs = {'relaxed': 0,
@@ -108,7 +125,6 @@ class DataConnection(object):
     def get_atom_numbers_to_optimize(self):
         """ Get the list of atom numbers being optimized. """
         v = self.c.get(simulation_cell=True)
-
         return v.data.optimization_stoichiometry
 
     def get_slab(self):
