@@ -1,0 +1,44 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module d3ef ! in 
+    interface  ! in :d3ef
+        module d3ef ! in :d3ef:d3ef.f90
+            subroutine d3(natoms,nallatoms,imagelist,k1,k3,max_elem,maxcn,atomnumber,numcn,cell,xyz,dmp6,dmp8,r0,rcut,rcutcn,s6,s18,rs6,rs8,alp6,alp8,rcov,c6ab,cntab,r2r4,hartree,bj,etot,ftot) ! in :d3ef:d3ef.f90:d3ef
+                integer, optional,intent(in),check(len(atomnumber)>=natoms),depend(atomnumber) :: natoms=len(atomnumber)
+                integer intent(in) :: nallatoms
+                integer dimension(3),intent(in) :: imagelist
+                integer intent(in) :: k1
+                integer intent(in) :: k3
+                integer, optional,intent(in),check(len(numcn)>=max_elem),depend(numcn) :: max_elem=len(numcn)
+                integer, optional,intent(in),check(shape(c6ab,1)==maxcn),depend(c6ab) :: maxcn=shape(c6ab,1)
+                integer dimension(natoms),intent(in) :: atomnumber
+                integer dimension(max_elem),intent(in) :: numcn
+                real*8 dimension(3,3),intent(in) :: cell
+                real*8 dimension(natoms,3),intent(in),depend(natoms) :: xyz
+                real*8 dimension(natoms,natoms),intent(in),depend(natoms,natoms) :: dmp6
+                real*8 dimension(natoms,natoms),intent(in),depend(natoms,natoms) :: dmp8
+                real*8 dimension(natoms,natoms),intent(in),depend(natoms,natoms) :: r0
+                real*8 intent(in) :: rcut
+                real*8 intent(in) :: rcutcn
+                real*8 intent(in) :: s6
+                real*8 intent(in) :: s18
+                real*8 intent(in) :: rs6
+                real*8 intent(in) :: rs8
+                real*8 intent(in) :: alp6
+                real*8 intent(in) :: alp8
+                real*8 dimension(natoms),intent(in),depend(natoms) :: rcov
+                real*8 dimension(max_elem,maxcn,max_elem,maxcn),intent(in),depend(max_elem,max_elem) :: c6ab
+                real*8 dimension(max_elem,maxcn),intent(in),depend(max_elem,maxcn) :: cntab
+                real*8 dimension(natoms),intent(in),depend(natoms) :: r2r4
+                real*8 intent(in) :: hartree
+                logical intent(in) :: bj
+                real*8 intent(out) :: etot
+                real*8 dimension(natoms,3),intent(out),depend(natoms) :: ftot
+            end subroutine d3
+        end module d3ef
+    end interface 
+end python module d3ef
+
+! This file was auto-generated with f2py (version:2).
+! See http://cens.ioc.ee/projects/f2py2e/
