@@ -1,7 +1,6 @@
 from ase.lattice.surface import fcc111
 from ase.data.s22 import create_s22_system
 from ase.calculators.d3 import D3
-from ase.calculators.test import numeric_forces
 
 fortran = True
 
@@ -13,7 +12,7 @@ except ImportError:
 def testforce(system, fortran=False, bj=False):
     system.set_calculator(D3(fortran=fortran, bj=bj))
     f1 = system.get_forces()
-    f2 = numeric_forces(system, d=0.0001)
+    f2 = system.calc.calculate_numerical_forces(system, 0.0001)
     
     print f1
     print f2

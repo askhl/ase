@@ -5,4 +5,7 @@ include ase/gui/po/ag.pot
 include ase/gui/po/makefile
 include ase/gui/po/??_??/LC_MESSAGES/ag.po
 include ase/gui/po/??/LC_MESSAGES/ag.po
+include ase/calculators/d3/d3ef.???
+include ase/calculators/d3/d3_gfortran.make
+include ase/calculators/d3/d3_ifort.make
 recursive-include doc *

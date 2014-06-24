@@ -44,7 +44,7 @@ module d3ef
          real*8 :: dc9(natoms, 3)
        
          real*8 :: xyzab(3), xyzac(3), xyzbc(3)
-         real*8 :: uxyzab(3), uxyzac(3), uxyzbc(3)
+         real*8 :: uxyzab(3)
 
          real*8 :: rab, rab2, rab3, rac, rac2, rac3
          real*8 :: rbc, rbc2, rbc3
@@ -54,7 +54,7 @@ module d3ef
          real*8 :: ddamp9(3), dadamp9(3), dbdamp9(3), dcdamp9(3)
 
          real*8 :: dfdc6(3), dfdc8(3)
-         real*8 :: dfdc9(3), dafdc9(3), dbfdc9(3), dcfdc9(3)
+         real*8 :: dafdc9(3), dbfdc9(3), dcfdc9(3)
 
          real*8 :: cosalpha, cosbeta, cosgamma
          real*8 :: dacosalpha(3), dacosbeta(3), dacosgamma(3)

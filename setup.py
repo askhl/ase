@@ -61,11 +61,16 @@ packages = ['ase',
             'ase.visualize.vtk',
             'ase.transport',
             'ase.calculators',
-            'ase.calculators.jacapo']
+            'ase.calculators.jacapo',
+            'ase.calculators.d3']
 
 package_dir={'ase': 'ase'}
 
-package_data={'ase': ['lattice/spacegroup/spacegroup.dat']}
+package_data={'ase': ['lattice/spacegroup/spacegroup.dat',
+    'calculators/d3/d3ef.f90',
+    'calculators/d3/d3ef.pyf',
+    'calculators/d3/d3_gfortran.make',
+    'calculators/d3/d3_ifort.make']}
 
 class test(Command):
     description = 'build and run test suite; exit code is number of failures'

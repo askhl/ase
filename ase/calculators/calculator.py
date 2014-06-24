@@ -22,7 +22,7 @@ all_changes = ['positions', 'numbers', 'cell', 'pbc',
 names = ['abinit', 'aims', 'asap', 'castep', 'dftb', 'eam', 'elk', 'emt',
          'exciting', 'fleur', 'gpaw', 'gaussian', 'hotbit', 'jacapo',
          'lammps', 'lammpslib', 'lj', 'mopac', 'morse',
-         'nwchem', 'siesta', 'turbomole', 'vasp']
+         'nwchem', 'siesta', 'turbomole', 'vasp', 'd3']
 
 
 special = {'eam': 'EAM',

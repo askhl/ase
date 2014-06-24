@@ -4,12 +4,12 @@ import itertools
 import numpy as np
 from ase.units import Hartree, Bohr
 from ase.calculators.calculator import Calculator
-from ase.calculators.d3params import k1, k2, k3, alp, damp, dampbj, \
+from ase.calculators.d3.d3params import k1, k2, k3, alp, damp, dampbj, \
         numcn, cn, rcov, r2r4, r0ab, c6ab
 
 usefortran = True
 try:
-    from ase.calculators.d3ef import d3ef
+    from ase.calculators.d3.d3ef import d3ef
 except ImportError:
     usefortran = False
 
