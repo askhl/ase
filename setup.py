@@ -3,8 +3,8 @@
 # Copyright (C) 2007  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-from distutils.core import setup, Command
-from distutils.command.build_py import build_py as _build_py
+from numpy.distutils.core import setup, Command
+from numpy.distutils.command.build_py import build_py as _build_py
 from glob import glob
 from os.path import join
 
@@ -175,11 +175,30 @@ def configuration(parent_package='', top_path=None):
         return None
     return config
 
-if __name__ == '__main__':
-    from numpy.distutils.core import setup
-    config = configuration(top_path='')
-    if config is not None:
-        setup(**config.todict())
+#class testfunc(test):
+#    def run(self):
+#        return None
+#
+#if __name__ == '__main__':
+#    from numpy.distutils.core import setup
+#    config = configuration(top_path='')
+#    if config is not None:
+#        config = config.todict()
+#        print config
+#        sys.exit()
+#        config['cmdclass'] = {'test': testfunc}
+#        setup(**config)
+
+config = configuration(top_path='')
+
+ext_modules = []
+
+if config is not None:
+    config = config.todict()
+    packages.append('ase.calculators.d3')
+    ext_modules.append(config['ext_modules'][0])
+    package_dir['ase.calculators.d3'] = 'ase/calculators/d3'
+
 
 setup(name='python-ase',
       version=version,
@@ -195,5 +214,6 @@ setup(name='python-ase',
       scripts=scripts,
       data_files=data_files,
       long_description=long_description,
+      ext_modules=ext_modules,
       cmdclass={'build_py': build_py,
                 'test': test})
