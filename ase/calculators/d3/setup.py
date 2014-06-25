@@ -21,9 +21,7 @@ def configuration(parent_package='', top_path=None):
     config.add_extension('d3ef',
             sources=['d3ef.pyf','d3ef.f90'],
             extra_link_args=[extra_link_args],
-            extra_f90_compile_args=[extra_compile_args],
-#            f2py_options=['--fcompiler=' + fc],
-#            extra_info={'fcompiler': fc},
+            extra_compile_args=[extra_compile_args],
             )
     return config
 
