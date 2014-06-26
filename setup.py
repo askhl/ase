@@ -166,6 +166,7 @@ for dirname, dirnames, filenames in os.walk('doc'):
                 fileslist.append(fullname)
         data_files.append(('share/python-ase/' + dirname, fileslist))
 
+# Begin stuff for D3
 def configuration(parent_package='', top_path=None):
     from numpy.distutils.misc_util import Configuration
     config = Configuration(None, parent_package, top_path)
@@ -175,21 +176,12 @@ def configuration(parent_package='', top_path=None):
         return None
     return config
 
-#class testfunc(test):
-#    def run(self):
-#        return None
-#
-#if __name__ == '__main__':
-#    from numpy.distutils.core import setup
-#    config = configuration(top_path='')
-#    if config is not None:
-#        config = config.todict()
-#        print config
-#        sys.exit()
-#        config['cmdclass'] = {'test': testfunc}
-#        setup(**config)
-
 config = configuration(top_path='')
+
+try:
+    import numpy.f2py
+except ImportError:
+    config = None
 
 ext_modules = []
 
@@ -198,7 +190,7 @@ if config is not None:
     packages.append('ase.calculators.d3')
     ext_modules.append(config['ext_modules'][0])
     package_dir['ase.calculators.d3'] = 'ase/calculators/d3'
-
+# End stuff for D3
 
 setup(name='python-ase',
       version=version,
