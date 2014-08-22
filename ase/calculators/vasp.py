@@ -62,7 +62,7 @@ float_keys = [
     'param1',     # Exchange parameter
     'param2',     # Exchange parameter
     'pomass',     # mass of ions in am
-    'pstress',    #  
+    'pstress',    # add this stress to the stress tensor, and energy E = V * pstress 
     'sigma',      # broadening in eV
     'spring',     # spring constant for NEB
     'time',       # special control tag
@@ -87,6 +87,7 @@ float_keys = [
     'ftimeinc',   # Factor to inc. dt
     'falpha',     # Parameter for velocity damping
     'falphadec',  # Factor to dec. alpha
+    'clz',        # electron count for core level shift
 ]
 
 exp_keys = [
@@ -162,6 +163,10 @@ int_keys = [
     'snl',        # Maximum dimentionality of the Lanczos matrix
     'lbfgsmem',   # Steps saved for inverse Hessian for IOPT = 1 (LBFGS)
     'fnmin',      # Max iter. before adjusting dt and alpha for IOPT = 7 (FIRE)
+    'icorelevel', # core level shifts
+    'clnt',       # species index
+    'cln',        # main quantum number of excited core electron
+    'cll',        # l quantum number of excited core electron
 ]
 
 bool_keys = [
@@ -199,10 +204,12 @@ bool_keys = [
     'ltangentold', # Old central difference tangent
     'ldneb',      # Turn on modified double nudging
     'lnebcell',   # Turn on SS-NEB
-    'lglobal',    # Optmizize NEB globally for LBFGS (IOPT = 1)
+    'lglobal',    # Optmize NEB globally for LBFGS (IOPT = 1)
     'llineopt',   # Use force based line minimizer for translation (IOPT = 1)
-    'lbeefens',   # Switch on print of BEE energy contritions in OUTCAR
+    'lbeefens',   # Switch on print of BEE energy contributions in OUTCAR
     'lbeefbas',   # Switch off print of all BEEs in OUTCAR
+    'lcalcpol',   # macroscopic polarization (vasp5.2). 'lcalceps'
+    'lcalceps',   # Macroscopic dielectric properties and Born effective charge tensors (vasp 5.2)
 ]
 
 list_keys = [
@@ -370,26 +377,25 @@ ldau_luj={'H':{'L':2, 'U':4.0, 'J':0.9},
         # Determine the number of atoms of each atomic species
         # sorted after atomic species
         special_setups = []
-        symbols = {}
+        symbols = []
+        symbolcount = {}
         if self.input_params['setups']:
             for m in self.input_params['setups']:
                 try :
-                    #special_setup[self.input_params['setups'][m]] = int(m)
                     special_setups.append(int(m))
-                except ValueError:
-                    #print 'setup ' + m + ' is a groups setup'
+                except ValueError:                
                     continue
-            #print 'special_setups' , special_setups
-
+ 
         for m,atom in enumerate(atoms):
             symbol = atom.symbol
             if m in special_setups:
                 pass
             else:
-                if not symbols.has_key(symbol):
-                    symbols[symbol] = 1
+                if symbol not in symbols:
+                    symbols.append(symbol)
+                    symbolcount[symbol] = 1
                 else:
-                    symbols[symbol] += 1
+                    symbolcount[symbol] += 1
 
         # Build the sorting list
         self.sort = []
@@ -411,13 +417,13 @@ ldau_luj={'H':{'L':2, 'U':4.0, 'J':0.9},
         # create a list of their paths.
         self.symbol_count = []
         for m in special_setups:
-            self.symbol_count.append([atomtypes[m],1])
+            self.symbol_count.append([atomtypes[m], 1])
         for m in symbols:
-            self.symbol_count.append([m,symbols[m]])
-        #print 'self.symbol_count',self.symbol_count
+            self.symbol_count.append([m, symbolcount[m]])
+
         sys.stdout.flush()
         xc = '/'
-        #print 'p[xc]',p['xc']
+            
         if p['xc'] == 'PW91':
             xc = '_gga/'
         elif p['xc'] == 'PBE':
@@ -586,9 +592,10 @@ ldau_luj={'H':{'L':2, 'U':4.0, 'J':0.9},
         self.read_incar()
         self.read_outcar()
         self.set_results(atoms)
-        self.read_kpoints()
+        if 'kspacing' not in self.float_params:
+            self.read_kpoints()
         self.read_potcar()
-#        self.old_incar_params = self.incar_params.copy()
+
         self.old_input_params = self.input_params.copy()
         self.converged = self.read_convergence()
 

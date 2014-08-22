@@ -80,7 +80,7 @@ class SQLite3Database(Database):
     default = 'NULL'  # used for autoincrement id
     
     def _connect(self):
-        return sqlite3.connect(self.filename)
+        return sqlite3.connect(self.filename, timeout=600)
 
     def _initialize(self, con):
         if self.initialized:
@@ -387,7 +387,7 @@ def blob(array):
         return None
     if array.dtype == np.int64:
         array = array.astype(np.int32)
-    return buffer(array)
+    return buffer(np.ascontiguousarray(array))
 
 
 def deblob(buf, dtype=float, shape=None):

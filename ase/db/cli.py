@@ -4,8 +4,8 @@ import optparse
 
 import ase.io
 from ase.db import connect
-from ase.db.table import Table
 from ase.db.summary import Summary
+from ase.db.table import Table, all_columns
 from ase.calculators.calculator import get_calculator
 
 import numpy as np
@@ -64,9 +64,9 @@ def main(args=sys.argv[1:]):
         'to show all.')
     add('--delete', action='store_true',
         help='Delete selected rows.')
-    add('--delete-keywords', metavar='key1=word1,word2,...',
+    add('--delete-keywords', metavar='keyword1,keyword2,...',
         help='Delete keywords for selected rows.')
-    add('--delete-key-value-pairs', metavar='key1=val1,key2=val2,...',
+    add('--delete-key-value-pairs', metavar='key1,key2,...',
         help='Delete key-value pairs for selected rows.')
     add('-y', '--yes', action='store_true',
         help='Say yes.')
@@ -76,13 +76,15 @@ def main(args=sys.argv[1:]):
         help='Specify columns to show.  Precede the column specification ' +
         'with a "+" in order to add columns to the default set of columns.  ' +
         'Precede by a "-" to remove columns.')
-    add('-s', '--sort', metavar='column',
+    add('-s', '--sort', metavar='column', default='id',
         help='Sort rows using column.  Default is to sort after ID.')
     add('--cut', type=int, default=35, help='Cut keywords and key-value ' +
         'columns after CUT characters.  Use --cut=0 to disable cutting. ' +
         'Default is 35 characters')
     add('-p', '--python-expression', metavar='expression',
         help='Examples: "id,energy", "id,mykey".')
+    add('--csv', action='store_true',
+        help='Write comma-separated-values file.')
     add('-w', '--open-web-browser', action='store_true',
         help='Open results in web-browser.')
 
@@ -115,6 +117,11 @@ def run(opts, args, verbosity):
     else:
         add_keywords = []
 
+    if opts.delete_keywords:
+        delete_keywords = opts.delete_keywords.split(',')
+    else:
+        delete_keywords = []
+
     add_key_value_pairs = {}
     if opts.add_key_value_pairs:
         for pair in opts.add_key_value_pairs.split(','):
@@ -128,8 +135,17 @@ def run(opts, args, verbosity):
                     break
             add_key_value_pairs[key] = value
 
+    if opts.delete_key_value_pairs:
+        delete_key_value_pairs = opts.delete_key_value_pairs.split(',')
+    else:
+        delete_key_value_pairs = []
+
     con = connect(filename)
     
+    def out(*args):
+        if verbosity > 0:
+            print(*args)
+            
     if opts.add_from_file:
         filename = opts.add_from_file
         if ':' in filename:
@@ -138,8 +154,8 @@ def run(opts, args, verbosity):
         else:
             atoms = ase.io.read(filename)
         con.write(atoms, add_keywords, key_value_pairs=add_key_value_pairs)
-        print('Added {0} from {1}'.format(atoms.get_chemical_formula(),
-                                          filename))
+        out('Added {0} from {1}'.format(atoms.get_chemical_formula(),
+                                        filename))
         return
         
     if opts.count:
@@ -152,7 +168,7 @@ def run(opts, args, verbosity):
     if opts.explain:
         for dct in con.select(query, explain=True,
                               verbosity=verbosity, limit=opts.limit):
-            print('%d %d %d %s' % dct['explain'])
+            print(dct['explain'])
         return
 
     if opts.insert_into:
@@ -174,20 +190,20 @@ def run(opts, args, verbosity):
             con2.write(dct, keywords, data=dct.get('data'), **kvp)
             nrows += 1
             
-        print('Added %s and %s (%s updated)' %
-              (plural(nkw, 'keyword'),
-               plural(nkvp, 'key-value pair'),
-               plural(len(add_key_value_pairs) * nrows - nkvp, 'pair')))
-        print('Inserted %s' % plural(nrows, 'row'))
+        out('Added %s and %s (%s updated)' %
+            (plural(nkw, 'keyword'),
+             plural(nkvp, 'key-value pair'),
+             plural(len(add_key_value_pairs) * nrows - nkvp, 'pair')))
+        out('Inserted %s' % plural(nrows, 'row'))
         return
 
     if add_keywords or add_key_value_pairs:
         ids = [dct['id'] for dct in con.select(query)]
         nkw, nkv = con.update(ids, add_keywords, **add_key_value_pairs)
-        print('Added %s and %s (%s updated)' %
-              (plural(nkw, 'keyword'),
-               plural(nkv, 'key-value pair'),
-               plural(len(add_key_value_pairs) * len(ids) - nkv, 'pair')))
+        out('Added %s and %s (%s updated)' %
+            (plural(nkw, 'keyword'),
+             plural(nkv, 'key-value pair'),
+             plural(len(add_key_value_pairs) * len(ids) - nkv, 'pair')))
         return
 
     if opts.delete:
@@ -197,7 +213,16 @@ def run(opts, args, verbosity):
             if raw_input(msg).lower() != 'yes':
                 return
         con.delete(ids)
-        print('Deleted %s' % plural(len(ids), 'row'))
+        out('Deleted %s' % plural(len(ids), 'row'))
+        return
+
+    if delete_keywords or delete_key_value_pairs:
+        ids = [dct['id'] for dct in con.select(query)]
+        nkw, nkv = con.delete_keywords_and_key_value_pairs(
+            ids, delete_keywords, delete_key_value_pairs)
+        print('Removed %s and %s' %
+              (plural(nkw, 'keyword'),
+               plural(nkv, 'key-value pair')))
         return
 
     if opts.python_expression:
@@ -213,11 +238,27 @@ def run(opts, args, verbosity):
         summary = Summary(dct)
         summary.write()
     else:
-        table = Table(con, query, opts.limit, verbosity, opts.columns,
-                      opts.sort, opts.cut)
         if opts.open_web_browser:
             import ase.db.app as app
-            app.table = table
+            app.connection = con
             app.app.run(debug=True)
         else:
-            table.write()
+            columns = list(all_columns)
+            c = opts.columns
+            if c:
+                if c[0] == '+':
+                    c = c[1:]
+                elif c[0] != '-':
+                    columns = []
+                for col in c.split(','):
+                    if col[0] == '-':
+                        columns.remove(col[1:])
+                    else:
+                        columns.append(col.lstrip('+'))
+        
+            table = Table(con, verbosity, opts.cut)
+            table.select(query, columns, opts.sort, opts.limit)
+            if opts.csv:
+                table.write_csv()
+            else:
+                table.write()

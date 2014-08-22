@@ -200,8 +200,8 @@ def ints2string(x, threshold=10):
 
 
 class FixBondLengths(FixConstraint):
-    def __init__(self, pairs, iterations=10):
-        self.constraints = [FixBondLength(a1, a2)
+    def __init__(self, pairs, iterations=10, atoms=None, mic=False):
+        self.constraints = [FixBondLength(a1, a2, atoms=atoms, mic=mic)
                             for a1, a2 in pairs]
         self.iterations = iterations
 
@@ -222,24 +222,50 @@ class FixBondLengths(FixConstraint):
 
 class FixBondLength(FixConstraint):
     """Constraint object for fixing a bond length."""
-    def __init__(self, a1, a2):
-        """Fix distance between atoms with indices a1 and a2."""
+    def __init__(self, a1, a2, atoms=None, mic=False):
+        """Fix distance between atoms with indices a1 and a2. If mic is
+        True, follows the minimum image convention to keep constant the
+        shortest distance between a1 and a2 in any periodic direction.
+        atoms only needs to be supplied if mic=True.
+        """
         self.indices = [a1, a2]
+        self.constraint_force = None
+        self.mic = None
+        if mic:
+            if atoms is None:
+                raise RuntimeError('Please provide an atoms '
+                                   'object with mic=True.')
+            # Note: self.mic stores the atoms object that
+            # is required for the cell and pbc flags.
+            self.mic = atoms
 
     def adjust_positions(self, old, new):
         p1, p2 = old[self.indices]
         d = p2 - p1
+        if self.mic:
+            Dr = np.linalg.solve(self.mic.get_cell().T, d)
+            d = np.dot(Dr - np.round(Dr) * self.mic.get_pbc(),
+                       self.mic.get_cell())
         p = sqrt(np.dot(d, d))
         q1, q2 = new[self.indices]
         d = q2 - q1
+        if self.mic:
+            Dr = np.linalg.solve(self.mic.get_cell().T, d)
+            d = np.dot(Dr - np.round(Dr) * self.mic.get_pbc(),
+                       self.mic.get_cell())
         q = sqrt(np.dot(d, d))
         d *= 0.5 * (p - q) / q
         new[self.indices] = (q1 - d, q2 + d)
 
     def adjust_forces(self, positions, forces):
         d = np.subtract.reduce(positions[self.indices])
+        if self.mic:
+            Dr = np.linalg.solve(self.mic.get_cell().T, d)
+            d = np.dot(Dr - np.round(Dr) * self.mic.get_pbc(),
+                       self.mic.get_cell())
         d2 = np.dot(d, d)
         d *= 0.5 * np.dot(np.subtract.reduce(forces[self.indices]), d) / d2
+        self.constraint_force = d
         forces[self.indices] += (-d, d)
 
     def index_shuffle(self, ind):
@@ -254,12 +280,19 @@ class FixBondLength(FixConstraint):
         self.indices = newa
 
     def copy(self):
+        if self.mic:
+            raise NotImplementedError('Not implemented for mic.')
         return FixBondLength(*self.indices)
+
+    def get_constraint_force(self):
+        return self.constraint_force
 
     def __repr__(self):
         return 'FixBondLength(%d, %d)' % tuple(self.indices)
 
     def todict(self):
+        if self.mic:
+            raise NotImplementedError('Not implemented for mic.')
         return {'name': 'ase.constraints.FixBondLength',
                 'kwargs': {'a1': self.indices[0], 'a2': self.indices[1]}}
 
@@ -822,6 +855,23 @@ class Hookean(FixConstraint):
             raise RuntimeError('Unknown type for a2')
         self.threshold = rt
         self.spring = k
+
+    def todict(self):
+        dct = {'name': 'ase.constraints.Hookean'}
+        dct['kwargs'] = {'rt': self.threshold,
+                         'k': self.spring}
+        if self._type == 'two atoms':
+            dct['kwargs']['a1'] = self.indices[0]
+            dct['kwargs']['a2'] = self.indices[1]
+        elif self._type == 'point':
+            dct['kwargs']['a1'] = self.index
+            dct['kwargs']['a2'] = self.origin
+        elif self._type == 'plane':
+            dct['kwargs']['a1'] = self.index
+            dct['kwargs']['a2'] = self.plane
+        else:
+            raise NotImplementedError('Bad type: %s' % self._type)
+        return dct
 
     def adjust_positions(self, oldpositions, newpositions):
         pass
