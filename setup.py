@@ -3,8 +3,8 @@
 # Copyright (C) 2007  CAMP
 # Please see the accompanying LICENSE file for further information.
 
-from numpy.distutils.core import setup, Command
-from numpy.distutils.command.build_py import build_py as _build_py
+from distutils.core import setup, Command
+from distutils.command.build_py import build_py as _build_py
 from glob import glob
 from os.path import join
 
@@ -166,32 +166,6 @@ for dirname, dirnames, filenames in os.walk('doc'):
                 fileslist.append(fullname)
         data_files.append(('share/python-ase/' + dirname, fileslist))
 
-# Begin stuff for D3
-def configuration(parent_package='', top_path=None):
-    from numpy.distutils.misc_util import Configuration
-    config = Configuration(None, parent_package, top_path)
-    try:
-        config.add_subpackage('ase.calculators.d3')
-    except AttributeError:
-        return None
-    return config
-
-config = configuration(top_path='')
-
-try:
-    import numpy.f2py
-except ImportError:
-    config = None
-
-ext_modules = []
-
-if config is not None:
-    config = config.todict()
-    packages.append('ase.calculators.d3')
-    ext_modules.append(config['ext_modules'][0])
-    package_dir['ase.calculators.d3'] = 'ase/calculators/d3'
-# End stuff for D3
-
 setup(name='python-ase',
       version=version,
       description='Atomic Simulation Environment',
@@ -206,6 +180,5 @@ setup(name='python-ase',
       scripts=scripts,
       data_files=data_files,
       long_description=long_description,
-      ext_modules=ext_modules,
       cmdclass={'build_py': build_py,
                 'test': test})

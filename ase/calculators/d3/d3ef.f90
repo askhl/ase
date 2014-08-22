@@ -6,7 +6,7 @@ module d3ef
       subroutine d3(natoms, nallatoms, imagelist, k1, k3, max_elem, maxcn, &
             atomnumber, numcn, cell, xyz, dmp6, dmp8, r0, rcut, rcutcn, s6, &
             s18, rs6, rs8, alp6, alp8, rcov, c6ab, cntab, r2r4, Hartree, bj, &
-            etot, ftot)
+            threebody, etot, ftot)
 
          implicit none
 
@@ -23,7 +23,7 @@ module d3ef
          real*8, intent(in) :: cntab(max_elem, maxcn), r2r4(natoms)
          real*8, intent(in) :: Hartree
 
-         logical, intent(in) :: bj
+         logical, intent(in) :: bj, threebody
 
          integer :: a, b, c, bnum, cnum
          integer :: i, j, k, nadded, na, nb, ncna, ncnb
@@ -195,7 +195,7 @@ module d3ef
          !$OMP PARALLEL DEFAULT(PRIVATE) SHARED(e6,f6,e8,f8,eabc,fabc) &
          !$OMP SHARED(natoms,nallatoms,image,atomindex,xyz,xyzall,dmp6,dmp8) &
          !$OMP SHARED(r0,rcut,rcutcn,c6,dc6,c8,dc8,c9,s6,s18,rs6,rs8) &
-         !$OMP SHARED(alp6,alp8,bj,etot,ftot,nadded,Hartree)
+         !$OMP SHARED(alp6,alp8,bj,etot,ftot,nadded,Hartree,threebody)
 
          ! Atom a loops over atoms in the central unit cell
          !$OMP DO REDUCTION(+:e6,e8,eabc,f6,f8,fabc)
@@ -271,6 +271,9 @@ module d3ef
                   f8(b,:) = f8(b,:) + s18 * c8(a,b) * dfdc8
                endif
                f8 = f8 - s18 * dc8(:,a,b,:) * dedc8 * self
+
+               ! Do we calculate the 3-body term?
+               if (.not. threebody)  cycle
 
                ! Don't calculate 3-body term if rab > rcutcn
                if (rab .gt. rcutcn)  cycle

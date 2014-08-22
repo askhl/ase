@@ -2,6 +2,8 @@
 
 import itertools
 import numpy as np
+import copy
+from warnings import warn
 from ase.units import Hartree, Bohr
 from ase.calculators.calculator import Calculator
 from ase.calculators.d3.d3params import k1, k2, k3, alp, damp, dampbj, \
@@ -22,10 +24,14 @@ class D3(Calculator):
             rcutcn=40. * Bohr,
             calculator=None,
             fortran=usefortran,
-            damppars=None):
+            damppars=None,
+            threebody=True):
 
         # Whether we use faster Fortran code, or slower native python
         self.fortran = fortran
+
+        # Whether to calculate the 3B contributions
+        self.threebody = threebody
 
         self.bj = bj
         if self.bj:
@@ -74,6 +80,7 @@ class D3(Calculator):
             self.rcutcn = rcutcn
 
         self.atoms = None
+        self.positions = None
         self.calculator = calculator
 
         # Coordination number
@@ -351,6 +358,11 @@ class D3(Calculator):
                     f8[b] += self.s18 * self.c8[a, b] * dfdc8
                 f8 -= self.s18 * self.dc8[:, a, b] * dedc8 * sself
 
+                # Do we calculate the 3-body term?
+
+                if not self.threebody:
+                    continue
+
                 # Don't calculate 3-body term if rab > rcutcn
                 if rab > self.rcutcn:
                     continue
@@ -599,11 +611,10 @@ class D3(Calculator):
         """Update system parameters and calculate energy, forces,
         and stress"""
 
+        if not self.calculation_required(atoms, ['energy', 'forces']):
+            return
         if atoms is None:
             atoms = self.calculator.get_atoms()
-#        if (self.atoms and
-#            (self.atoms.get_positions() == atoms.get_positions()).all()):
-#            return
         if self.calculator is not None:
             self.energy = self.calculator.get_potential_energy(atoms)
             self.forces = self.calculator.get_forces(atoms)
@@ -613,6 +624,14 @@ class D3(Calculator):
             self.forces = np.zeros((len(atoms), 3))
 #            self.stress = np.zeros(6)
         self.atoms = atoms.copy()
+        if (not self.fortran) and self.threebody and self.atoms.pbc.any():
+            warn("""
+            WARNING: You are calculating the three body interactions
+            of a periodic system using the Python implementation of D3.
+            This is very slow. Please consider compiling and using
+            the Fortran implementation by running d3_gfortran.make in
+            $PYTHONPATH/ase/calculators/d3
+            """, RuntimeWarning)
         self.updateparams(atoms)
         if self.fortran:
             e, f = d3ef.d3(
@@ -641,11 +660,13 @@ class D3(Calculator):
                     r2r4=self.r2r4,
                     hartree=Hartree,
                     bj=self.bj,
+                    threebody=self.threebody,
                     )
             self.energy += e
             self.forces += f
         else:
             self.efcalc(atoms)
+        self.set_results(atoms)
         # Not sure this is correct, leaving it unimplemented for the time being
         #stress = np.sum(self.forces[:, :, np.newaxis] \
         #        * atoms.get_positions()[:, np.newaxis, :], axis=0) \
@@ -661,4 +682,27 @@ class D3(Calculator):
         return self.forces
 
     def get_stress(self, atoms):
+        #self.update(atoms)
+        #return self.forces
         raise NotImplementedError
+
+    def calculation_required(self, atoms, quantities):
+        if ((self.positions is None) or
+            (self.atoms != atoms) or
+            (self.fortran != self.old_fortran) or
+            (self.bj != self.old_bj) or
+            (self.rcut != self.old_rcut) or
+            (self.rcutcn != self.old_rcutcn)):
+            return True
+        return False
+
+    def set_results(self, atoms):
+        self.positions = atoms.get_positions()
+        self.atoms = atoms.copy()
+        self.old_fortran = copy.copy(self.fortran)
+        self.old_bj = copy.copy(self.bj)
+        self.old_rcut = copy.copy(self.rcut)
+        self.old_rcutcn = copy.copy(self.rcutcn)
+
+
+
